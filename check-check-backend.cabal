@@ -11,8 +11,8 @@ build-type:     Simple
 executable check-check-backend-exe
   main-is: Main.hs
   other-modules:
-      CustomUtils.JSON
-      CustomUtils.Persistence
+      Common.JSON
+      Common.Persistence
       Receipts
       Receipts.API
       Receipts.Fetching

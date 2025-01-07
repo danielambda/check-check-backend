@@ -15,6 +15,7 @@ import Data.ByteString.Char8 as B (pack)
 import System.Environment (getEnv)
 
 import Receipts
+import Common.Persistence (MonadConnPoolReader, askConnPool)
 
 type API = ReceiptsAPI
 
@@ -27,17 +28,19 @@ data Env = Env
 
 instance MonadReceiptsEnvReader AppM where
   askReceiptsEnv = asks envReceiptsEnv
+instance MonadConnPoolReader AppM where
+  askConnPool = asks envConnPool
 
-application :: Connection -> Env -> Application
-application conn env =
-  serve api $ hoistServer api nt (server conn)
+application :: Env -> Application
+application env =
+  serve api $ hoistServer api nt server
   where
     api :: Proxy API; api = Proxy
 
     nt :: AppM a -> Handler a
     nt = flip runReaderT env
 
-server :: Connection -> ServerT API AppM
+server :: ServerT API AppM
 server = receiptsServer
 
 corsPolicy :: Middleware
@@ -63,5 +66,5 @@ main = do
 
   let port = 8080
   putStrLn $ "   Hello! The app is running on port " <> show port
-  run port $ corsPolicy $ application conn env
+  run port $ corsPolicy $ application env
   close conn

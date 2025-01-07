@@ -3,7 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 
 module Receipts.Types
-  ( Receipt(Receipt)
+  ( Receipt(Receipt, items)
   , ReceiptItem(ReceiptItem, name, price, quantity)
   ) where
 

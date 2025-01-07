@@ -24,10 +24,10 @@ import Data.Aeson.Types (parseMaybe)
 
 import Data.Function ((&))
 import Control.Monad.IO.Class (MonadIO)
+import System.Environment (getEnv)
 
 import Receipts.Types
-import CustomUtils.JSON ((*:))
-import System.Environment (getEnv)
+import Common.JSON ((*:))
 
 data Env = Env
   { inn :: String
