@@ -1,0 +1,11 @@
+nix:
+  enable: true
+  packages:
+    - zlib.dev
+    - zlib.out
+
+snapshot: lts-22.43
+
+packages:
+- .
+
