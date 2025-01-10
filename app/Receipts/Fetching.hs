@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BlockArguments #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Receipts.Fetching (fetchReceiptItems, Env, mkEnv, MonadEnvReader, askEnv) where
 
@@ -19,7 +20,7 @@ import Network.HTTP.Simple
   , Request
   )
 import Data.ByteString.Char8 (pack)
-import Data.Aeson (decode, (.:), object, (.=))
+import Data.Aeson (decode, (.:), object, (.=), FromJSON)
 import Data.Aeson.Types (parseMaybe)
 
 import Data.Function ((&))
@@ -28,6 +29,8 @@ import System.Environment (getEnv)
 
 import Receipts.Types
 import Common.JSON ((*:))
+
+instance FromJSON ReceiptItem
 
 data Env = Env
   { inn :: String

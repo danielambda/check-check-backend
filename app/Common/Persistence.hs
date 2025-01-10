@@ -4,10 +4,11 @@ module Common.Persistence
   , execute, execute_
   , queryMaybe, queryMaybe_
   , executeMany
+  , withTransaction
   ) where
 
 import Database.PostgreSQL.Simple (Query, Connection, ToRow, FromRow)
-import qualified Database.PostgreSQL.Simple as PSQL (query, query_, execute_, execute, executeMany)
+import qualified Database.PostgreSQL.Simple as PG (query, query_, execute_, execute, executeMany, withTransaction)
 
 import Data.Maybe (listToMaybe)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -30,19 +31,19 @@ liftToMonadConstraints_ f queryText = do
 
 query :: (MonadIO m, MonadConnPoolReader m, ToRow q, FromRow r) =>
          Query -> q -> m [r]
-query = liftToMonadConstraints PSQL.query
+query = liftToMonadConstraints PG.query
 
 query_ :: (MonadIO m, MonadConnPoolReader m, FromRow r) =>
           Query -> m [r]
-query_ = liftToMonadConstraints_ PSQL.query_
+query_ = liftToMonadConstraints_ PG.query_
 
 execute :: (MonadIO m, MonadConnPoolReader m, ToRow q) =>
            Query -> q -> m Int64
-execute = liftToMonadConstraints PSQL.execute
+execute = liftToMonadConstraints PG.execute
 
 execute_ :: (MonadIO m, MonadConnPoolReader m) =>
            Query -> m Int64
-execute_ = liftToMonadConstraints_ PSQL.execute_
+execute_ = liftToMonadConstraints_ PG.execute_
 
 queryMaybe :: (MonadIO m, MonadConnPoolReader m, ToRow q, FromRow r) =>
               Query -> q -> m (Maybe r)
@@ -53,4 +54,9 @@ queryMaybe_ :: (MonadIO m, MonadConnPoolReader m, FromRow r) =>
 queryMaybe_ = fmap listToMaybe . query_
 
 executeMany :: (MonadIO m, MonadConnPoolReader m, ToRow q) => Query -> [q] -> m Int64
-executeMany = liftToMonadConstraints PSQL.executeMany
+executeMany = liftToMonadConstraints PG.executeMany
+
+withTransaction :: (MonadIO m, MonadConnPoolReader m) => IO () -> m ()
+withTransaction actions = do
+  conn <- askConnPool
+  liftIO $ PG.withTransaction conn actions

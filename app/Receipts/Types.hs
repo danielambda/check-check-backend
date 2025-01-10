@@ -1,26 +1,16 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DerivingStrategies #-}
 
-module Receipts.Types
-  ( Receipt(Receipt, items)
-  , ReceiptItem(ReceiptItem, name, price, quantity)
-  ) where
-
-import Data.Aeson
+module Receipts.Types (Receipt(..), ReceiptItem(..)) where
 
 import GHC.Generics
-import Database.PostgreSQL.Simple (FromRow)
 
 newtype Receipt = Receipt
   { items :: [ReceiptItem]
-  } deriving stock (Generic)
-    deriving anyclass (ToJSON)
+  } deriving Generic
 
 data ReceiptItem = ReceiptItem
   { name :: String
   , price :: Integer
   , quantity :: Double
-  } deriving stock (Generic)
-    deriving anyclass (ToJSON, FromJSON, FromRow)
+  } deriving Generic
 

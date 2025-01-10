@@ -13,6 +13,8 @@ dependencies:
 - wai-cors
 - postgresql-simple
 - mtl
+- uuid
+- text
 
 ghc-options:
 - -Wall

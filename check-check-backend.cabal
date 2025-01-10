@@ -11,13 +11,25 @@ build-type:     Simple
 executable check-check-backend-exe
   main-is: Main.hs
   other-modules:
+      App
       Common.JSON
       Common.Persistence
+      Goods.Persistence
+      Goods.Types
+      Groups
+      Groups.API
+      Groups.Persistence
+      Groups.Types
+      InitDb
+      ReceiptItemAssociations.Persistence
+      ReceiptItemAssociations.Types
       Receipts
       Receipts.API
       Receipts.Fetching
       Receipts.Persistence
       Receipts.Types
+      Users.Persistence
+      Users.Types
       Paths_check_check_backend
   hs-source-dirs:
       app
@@ -31,6 +43,8 @@ executable check-check-backend-exe
     , mtl
     , postgresql-simple
     , servant-server
+    , text
+    , uuid
     , wai
     , wai-cors
     , warp
