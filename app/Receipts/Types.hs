@@ -3,16 +3,18 @@
 
 module Receipts.Types (Receipt(..), ReceiptItem(..)) where
 
-import GHC.Generics
 import Data.Aeson (ToJSON, FromJSON)
+import Data.Text (Text)
 import Database.PostgreSQL.Simple (FromRow)
+
+import GHC.Generics
 
 newtype Receipt = Receipt
   { items :: [ReceiptItem]
   } deriving (Generic, ToJSON)
 
 data ReceiptItem = ReceiptItem
-  { name :: String
+  { name :: Text
   , price :: Integer
   , quantity :: Double
   } deriving (Generic, FromRow, ToJSON, FromJSON)

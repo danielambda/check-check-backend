@@ -6,10 +6,11 @@ module Receipts.API (ReceiptsAPI, receiptsServer) where
 
 import Servant ((:>), Capture, Get, JSON, ServerT)
 
-import Receipts.Types (Receipt(Receipt))
+import Receipts.Types (Receipt(Receipt), ReceiptItem (quantity, name))
 import Receipts.Fetching (fetchReceiptItems, MonadEnvReader)
 import Receipts.Persistence (getReceiptItemsFromDb, addReceiptItemsToDb)
 import Common.Persistence (MonadConnPoolReader)
+import Data.List (sortOn)
 
 type ReceiptsAPI = "receipts" :>
   Capture "qr" String :> Get '[JSON] Receipt
@@ -24,7 +25,22 @@ receiptsServer = getReceiptFromQr
       receiptItemsFromDb <- getReceiptItemsFromDb qr
       if null receiptItemsFromDb then do
         fetchedItems <- fetchReceiptItems qr
-        addReceiptItemsToDb qr fetchedItems
-        return fetchedItems
+        let items = mergeEponymousItems fetchedItems
+        addReceiptItemsToDb qr items
+        return items
       else
         return receiptItemsFromDb
+      where
+        mergeEponymousItems :: [ReceiptItem] -> [ReceiptItem]
+        mergeEponymousItems
+          = foldr merge []
+          . sortOn name
+          where
+            merge item [] = [item]
+            merge item (headItem:items)
+              | name item == name headItem =
+                  let newHeadItem = headItem{ quantity = quantity headItem + quantity item }
+                  in newHeadItem:items
+              | otherwise = item:headItem:items
+
+
