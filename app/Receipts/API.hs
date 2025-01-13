@@ -6,11 +6,12 @@ module Receipts.API (ReceiptsAPI, receiptsServer) where
 
 import Servant ((:>), Capture, Get, JSON, ServerT)
 
+import Data.List (sortOn)
+
+import Common.Persistence (MonadConnPoolReader)
 import Receipts.Types (Receipt(Receipt), ReceiptItem (quantity, name))
 import Receipts.Fetching (fetchReceiptItems, MonadEnvReader)
 import Receipts.Persistence (getReceiptItemsFromDb, addReceiptItemsToDb)
-import Common.Persistence (MonadConnPoolReader)
-import Data.List (sortOn)
 
 type ReceiptsAPI = "receipts" :>
   Capture "qr" String :> Get '[JSON] Receipt

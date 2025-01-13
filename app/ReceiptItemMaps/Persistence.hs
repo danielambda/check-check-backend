@@ -11,27 +11,13 @@ import Control.Monad (void)
 
 import Common.Persistence (sql, MonadConnPoolReader, execute_)
 
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO this logic is not necessary yet
--- TODO this logic is not necessary yet
--- TODO this logic is not necessary yet
--- TODO this logic is not necessary yet
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO TODO TODO
--- TODO TODO TODO
-
 createReceiptItemMapsTable :: MonadConnPoolReader m => m ()
 createReceiptItemMapsTable = void $ execute_ [sql|
   CREATE TABLE receipt_items_maps
   ( group_id UUID REFERENCES groups(id)
   , name TEXT NOT NULL
   , goods_id UUID NOT NULL REFERENCES goods(id)
+  , quantity REAL NOT NULL
   , created_at TIMESTAMP DEFAULT NOW()
   , PRIMARY KEY (group_id, name)
   )

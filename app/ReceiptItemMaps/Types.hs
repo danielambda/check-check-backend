@@ -11,5 +11,6 @@ import Goods.Types (GoodsId)
 data ReceiptItemMap = ReceiptItemMap
   { name :: Text
   , goodsId :: GoodsId
+  , quantity :: Double
   , isGlobal :: Bool
   } deriving (Generic)
