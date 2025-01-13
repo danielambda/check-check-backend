@@ -2,30 +2,30 @@
 
 module InitDb (initDb) where
 
-import Database.PostgreSQL.Simple (Connection, withTransaction, execute_)
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Control.Monad (void)
 
+import Common.Persistence (withTransaction, MonadConnPoolReader, execute_)
 import Receipts.Persistence (createReceiptItemsTable)
 import Users.Persistence (createUsersTable)
 import Goods.Persistence (createGoodsTable)
 import Groups.Persistence (createGroupsTable, createGroupsBudgetLogsTable, createGoodsStorageEntiresTable)
-import ReceiptItemAssociations.Persistence (createReceiptItemAssociationsTable, createReceiptItemAssociationsModerationEntriesTable)
+import ReceiptItemMaps.Persistence (createReceiptItemMapsTable, createReceiptItemMapsModerationEntriesTable)
 
-initDb :: Connection -> IO ()
-initDb conn = withTransaction conn $ do
-  initExtensions conn
-  createReceiptItemsTable conn
-  createGoodsTable conn
-  createGroupsTable conn
-  createUsersTable conn
-  createGroupsBudgetLogsTable conn
-  createGoodsStorageEntiresTable conn
-  createReceiptItemAssociationsTable conn
-  createReceiptItemAssociationsModerationEntriesTable conn
+initDb :: MonadConnPoolReader m => m ()
+initDb = withTransaction $ do
+  initExtensions
+  createReceiptItemsTable
+  createGoodsTable
+  createGroupsTable
+  createUsersTable
+  createGroupsBudgetLogsTable
+  createGoodsStorageEntiresTable
+  createReceiptItemMapsTable
+  createReceiptItemMapsModerationEntriesTable
 
-initExtensions :: Connection -> IO ()
-initExtensions conn = void $ execute_ conn [sql|
+initExtensions :: MonadConnPoolReader m => m ()
+initExtensions = void $ execute_ [sql|
   CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
 |]

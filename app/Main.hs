@@ -14,6 +14,7 @@ import System.Environment (getEnv, getArgs)
 import InitDb (initDb)
 import App (Env(..), application)
 import Receipts (initReceiptsEnv)
+import Control.Monad.Reader (ReaderT(runReaderT))
 
 main :: IO ()
 main = do
@@ -23,7 +24,7 @@ main = do
 
   args <- getArgs
   if "initdb" `elem` args then
-    initDb conn
+    runReaderT initDb conn
   else
     runAPI conn
 

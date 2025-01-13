@@ -1,0 +1,11 @@
+### Create goods
+POST localhost:8080/goods
+Content-Type: application/json
+
+{
+  "name": "potato",
+  "units": "Grams"
+}
+
+### Get goods
+GET localhost:8080/goods/820d7432-536a-48e5-9324-3a907b0f6cec

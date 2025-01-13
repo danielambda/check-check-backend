@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BlockArguments #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE DerivingVia #-}
 
 module Receipts.Fetching (fetchReceiptItems, Env, mkEnv, MonadEnvReader, askEnv) where
 
@@ -20,7 +20,7 @@ import Network.HTTP.Simple
   , Request
   )
 import Data.ByteString.Char8 (pack)
-import Data.Aeson (decode, (.:), object, (.=), FromJSON)
+import Data.Aeson (decode, (.:), object, (.=))
 import Data.Aeson.Types (parseMaybe)
 
 import Data.Function ((&))
@@ -29,8 +29,6 @@ import System.Environment (getEnv)
 
 import Receipts.Types
 import Common.JSON ((*:))
-
-instance FromJSON ReceiptItem
 
 data Env = Env
   { inn :: String
@@ -47,7 +45,6 @@ mkEnv = Env
 class Monad m => MonadEnvReader m where
   askEnv :: m Env
 
-
 fetchReceiptItems :: (MonadIO m, MonadEnvReader m) => String -> m [ReceiptItem]
 fetchReceiptItems qr =
   getSessionId >>= concatMapM \sessionId ->
@@ -56,15 +53,6 @@ fetchReceiptItems qr =
   where
     concatMapM :: (Traversable t, Monad m) => (a -> m [b]) -> t a -> m [b]
     concatMapM f xs = fmap concat (mapM f xs)
-
-  -- mSessionId <- getSessionId
-  -- case mSessionId of
-  --   Just sessionId -> do
-  --     mTicketId <- getTicketId sessionId qr
-  --     case mTicketId of
-  --       Just ticketId -> getReceiptItems sessionId ticketId
-  --       Nothing -> return []
-  --   Nothing -> return []
 
 getSessionId :: (MonadIO m, MonadEnvReader m) => m (Maybe String)
 getSessionId = do

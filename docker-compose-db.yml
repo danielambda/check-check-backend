@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: check-check-db
       POSTGRES_USER:     postgres
       POSTGRES_PASSWORD: postgres
-    # volumes: for some reason voluemes prevented changes in this file to take effect
-    #   - pg-data:/var/lib/postgresql/data
+    volumes:
+      - pg-data:/var/lib/postgresql/data
 
-# volumes:
-#   pg-data:
+volumes:
+  pg-data:

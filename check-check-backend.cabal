@@ -12,22 +12,32 @@ executable check-check-backend-exe
   main-is: Main.hs
   other-modules:
       App
+      Common.ByteStringParsableEnum
       Common.JSON
       Common.Persistence
+      Common.Types.Positive
+      Goods
+      Goods.API
       Goods.Persistence
       Goods.Types
       Groups
       Groups.API
       Groups.Persistence
+      Groups.Storage.API
       Groups.Types
+      Groups.Users.API
       InitDb
-      ReceiptItemAssociations.Persistence
-      ReceiptItemAssociations.Types
+      ReceiptItemMaps
+      ReceiptItemMaps.API
+      ReceiptItemMaps.Persistence
+      ReceiptItemMaps.Types
       Receipts
       Receipts.API
       Receipts.Fetching
       Receipts.Persistence
       Receipts.Types
+      Users
+      Users.API
       Users.Persistence
       Users.Types
       Paths_check_check_backend

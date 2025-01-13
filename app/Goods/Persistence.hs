@@ -1,20 +1,32 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
-module Goods.Persistence (createGoodsTable) where
-
-import Database.PostgreSQL.Simple.SqlQQ (sql)
-import Database.PostgreSQL.Simple (Connection)
-import qualified Database.PostgreSQL.Simple as PG (execute_)
+module Goods.Persistence (addSingleGoodsToDb, createGoodsTable, getGoodsFromDb) where
 
 import Control.Monad (void)
 
-createGoodsTable :: Connection -> IO ()
-createGoodsTable conn = void $ PG.execute_ conn [sql|
+import Common.Persistence (sql, MonadConnPoolReader, execute_, querySingleField, queryMaybe, Only (Only))
+import Goods.Types (Goods (Goods, units, name), GoodsId)
+
+addSingleGoodsToDb :: MonadConnPoolReader m
+                   => Goods -> m GoodsId
+addSingleGoodsToDb Goods{ name, units } = querySingleField [sql|
+  INSERT INTO goods (name, units) VALUES (?, ?) RETURNING id
+|] (name, units)
+
+getGoodsFromDb :: MonadConnPoolReader m
+               => GoodsId -> m (Maybe Goods)
+getGoodsFromDb goodsId = queryMaybe [sql|
+  SELECT name, units FROM goods WHERE id = ?
+|] (Only goodsId)
+
+createGoodsTable :: MonadConnPoolReader m => m ()
+createGoodsTable = void $ execute_ [sql|
   CREATE TYPE GOODS_UNITS
-    AS ENUM ('grams', 'liters', 'pieces');
+    AS ENUM ('Grams', 'Liters', 'Pieces');
 
   CREATE TABLE goods
-  ( id UUID NOT NULL
+  ( id UUID NOT NULL DEFAULT uuid_generate_v4()
   , name TEXT NOT NULL
   , units GOODS_UNITS NOT NULL
   , PRIMARY KEY (id)
