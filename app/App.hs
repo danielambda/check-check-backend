@@ -10,7 +10,7 @@ import Control.Monad.Reader (ReaderT (runReaderT), asks, MonadReader)
 
 import Control.Monad.IO.Class (MonadIO)
 
-import Common.Persistence (MonadConnPoolReader, askConnPool)
+import Shared.Persistence (MonadConnPoolReader, askConnPool)
 import Receipts
   ( ReceiptsEnv, MonadReceiptsEnvReader, askReceiptsEnv
   , ReceiptsAPI, receiptsServer

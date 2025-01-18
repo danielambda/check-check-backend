@@ -6,7 +6,7 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Control.Monad (void)
 
-import Common.Persistence (withTransaction, MonadConnPoolReader, execute_)
+import Shared.Persistence (withTransaction, MonadConnPoolReader, execute_)
 import Receipts.Persistence (createReceiptItemsTable)
 import Users.Persistence (createUsersTable)
 import Goods.Persistence (createGoodsTable)

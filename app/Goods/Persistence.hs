@@ -5,8 +5,8 @@ module Goods.Persistence (addSingleGoodsToDb, createGoodsTable, getGoodsFromDb) 
 
 import Control.Monad (void)
 
-import Common.Persistence (sql, MonadConnPoolReader, execute_, querySingleField, queryMaybe, Only (Only))
-import Goods.Types (Goods (Goods, units, name), GoodsId)
+import Shared.Persistence (sql, MonadConnPoolReader, execute_, querySingleField, queryMaybe, Only (Only))
+import Goods.Types (Goods (..), GoodsId)
 
 addSingleGoodsToDb :: MonadConnPoolReader m
                    => Goods -> m GoodsId

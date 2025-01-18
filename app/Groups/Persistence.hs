@@ -12,14 +12,14 @@ module Groups.Persistence
 
 import Control.Monad (void)
 
-import Common.Persistence
+import Shared.Persistence
   ( MonadConnPoolReader, sql, Only (Only)
   , queryMaybe, querySingleField
   , execute_, executeMany, query
   )
 import Groups.Types (Group(Group, name, budget), GroupId (GroupId))
 import Goods.Types (GoodsId, Goods (Goods))
-import Common.Types.Positive (Positive)
+import Shared.Types.Positive (Positive)
 
 addGroupToDb :: MonadConnPoolReader m => Group -> m GroupId
 addGroupToDb Group{ name, budget } = querySingleField [sql|

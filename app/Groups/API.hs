@@ -13,7 +13,7 @@ import Data.Aeson (FromJSON)
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 
-import Common.Persistence (MonadConnPoolReader, withTransaction)
+import Shared.Persistence (MonadConnPoolReader, withTransaction)
 import Users.Persistence (setUserGroupId)
 import Users.Types (UserId)
 import Groups.Types (Group (Group), GroupId)

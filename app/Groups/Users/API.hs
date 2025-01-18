@@ -5,8 +5,8 @@ module Groups.Users.API (InGroupUsersAPI, inGroupUsersServer) where
 
 import Servant ((:>), Capture, JSON, ServerT, ReqBody, NoContent (NoContent), PostNoContent, DeleteNoContent, (:<|>) ((:<|>)))
 
-import Common.Persistence (MonadConnPoolReader)
-import Common.Types.Positive (Positive)
+import Shared.Persistence (MonadConnPoolReader)
+import Shared.Types.Positive (Positive)
 import Goods.Types (GoodsId)
 import Users.Types (UserId)
 import Groups.Types (GroupId)

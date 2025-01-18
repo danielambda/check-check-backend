@@ -15,6 +15,7 @@ dependencies:
 - mtl
 - uuid
 - text
+- optics
 
 ghc-options:
 - -Wall

@@ -12,10 +12,6 @@ executable check-check-backend-exe
   main-is: Main.hs
   other-modules:
       App
-      Common.ByteStringParsableEnum
-      Common.JSON
-      Common.Persistence
-      Common.Types.Positive
       Goods
       Goods.API
       Goods.Persistence
@@ -33,9 +29,21 @@ executable check-check-backend-exe
       ReceiptItemMaps.Types
       Receipts
       Receipts.API
+      Receipts.API.GetReceipt
+      Receipts.Domain.Receipt
+      Receipts.Domain.ReceiptItem
       Receipts.Fetching
       Receipts.Persistence
-      Receipts.Types
+      Shared.ByteStringParsableEnum
+      Shared.Classes.FromDomain
+      Shared.Classes.ToDomain
+      Shared.JSON
+      Shared.Persistence
+      Shared.Types.Internal
+      Shared.Types.Positive
+      Shared.Types.TextLenRange
+      Shared.Types.TextMaxLen
+      Shared.Types.TextMinLen
       Users
       Users.API
       Users.Persistence
@@ -51,6 +59,7 @@ executable check-check-backend-exe
     , dotenv
     , http-conduit
     , mtl
+    , optics
     , postgresql-simple
     , servant-server
     , text

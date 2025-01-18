@@ -5,7 +5,7 @@ module Groups.Storage.API (GroupsStorageAPI, groupsStorageServer) where
 
 import Servant (JSON, (:>), Get, HasServer (ServerT))
 
-import Common.Persistence (MonadConnPoolReader)
+import Shared.Persistence (MonadConnPoolReader)
 import Goods.Types (Goods)
 import Groups.Types (GroupId)
 import Groups.Persistence (getStorageEntriesFromDb)

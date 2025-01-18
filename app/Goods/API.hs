@@ -12,7 +12,7 @@ import Data.Aeson (FromJSON)
 
 import GHC.Generics (Generic)
 
-import Common.Persistence (MonadConnPoolReader)
+import Shared.Persistence (MonadConnPoolReader)
 import Goods.Types (GoodsId, Goods (Goods), GoodsUnits)
 import Goods.Persistence (addSingleGoodsToDb, getGoodsFromDb)
 

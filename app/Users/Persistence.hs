@@ -8,7 +8,7 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Control.Monad (void)
 
-import Common.Persistence (MonadConnPoolReader, query, queryMaybe, execute, execute_)
+import Shared.Persistence (MonadConnPoolReader, query, queryMaybe, execute, execute_)
 import Users.Types (User(User, username, groupId), UserId(UserId))
 import Groups.Types (GroupId)
 

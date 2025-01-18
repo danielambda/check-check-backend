@@ -17,8 +17,8 @@ import Database.PostgreSQL.Simple (FromRow)
 import GHC.Generics (Generic)
 import Data.String (fromString)
 
-import Common.ByteStringParsableEnum (ByteStringParsableEnum)
-import Common.Persistence (mkEnumFieldParser)
+import Shared.ByteStringParsableEnum (ByteStringParsableEnum)
+import Shared.Persistence (mkEnumFieldParser)
 
 data Goods = Goods
   { name :: Text

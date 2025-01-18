@@ -12,7 +12,7 @@ import Data.Aeson (FromJSON)
 
 import GHC.Generics (Generic)
 
-import Common.Persistence (MonadConnPoolReader)
+import Shared.Persistence (MonadConnPoolReader)
 import Groups.Types (GroupId)
 import Users.Types (User (User), UserId)
 import Users.Persistence (addUserToDb, getUserFromDb)
