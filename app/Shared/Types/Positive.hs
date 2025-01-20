@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
-module Shared.Types.Positive (Positive, mkPositive, unPositive, plus) where
+module Shared.Types.Positive (Positive, mkPositive, unPositive, plus, mult) where
 
 import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.ToField (ToField)
@@ -12,6 +15,9 @@ import Data.Data (Typeable)
 
 import Shared.Types.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 import Data.String (IsString)
+import Optics (A_Getter)
+import Optics.Label (LabelOptic (labelOptic))
+import Optics.Getter (to)
 
 newtype Positive a = Positive a
   deriving (ToJSON, ToField)
@@ -23,9 +29,16 @@ mkPositive a | a > 0 = Just $ Positive a
 unPositive :: Positive a -> a
 unPositive (Positive a) = a
 
+instance LabelOptic "value" A_Getter (Positive a) (Positive a) a a where
+  labelOptic = to unPositive
+
 infixl 6 `plus`
 plus :: Num a => Positive a -> Positive a -> Positive a
 Positive x `plus` Positive y = Positive $ x + y
+
+infixl 7 `mult`
+mult :: Num a => Positive a -> Positive a -> Positive a
+Positive x `mult` Positive y = Positive $ x * y
 
 parseErrorMsg :: IsString s => s
 parseErrorMsg = "value has to be positive"
