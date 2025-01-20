@@ -20,7 +20,7 @@ import Data.Function ((&))
 import Shared.Persistence (MonadConnPoolReader)
 import Shared.Types.Positive (mkPositive)
 import Shared.TuppledFieldsOptics (tuppledFields3)
-import Receipts.Fetching (MonadEnvReader, fetchReceiptItems, FetchedReceiptItem)
+import Receipts.Fetching (fetchReceiptItems, FetchedReceiptItem)
 import Receipts.Persistence (getReceiptItemsFromDb, addReceiptItemsToDb, DbReceiptItem)
 import Receipts.Domain.Receipt (Receipt, mkReceipt, receiptItems)
 import Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem)
@@ -28,8 +28,7 @@ import Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem)
 type GetReceipt =
   Capture "qr" String :> Get '[JSON] (Maybe ReceiptResp)
 
-getReceipt :: (MonadEnvReader m, MonadConnPoolReader m)
-           => ServerT GetReceipt m
+getReceipt :: MonadConnPoolReader m => ServerT GetReceipt m
 getReceipt qr = do
   fmap toResponse <$> actualLogic
   where

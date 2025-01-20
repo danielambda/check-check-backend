@@ -8,12 +8,12 @@
   , FlexibleInstances, TypeFamilies
   , UndecidableInstances, TypeOperators
   #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Receipts.Fetching
-  ( Env, mkEnv, MonadEnvReader , askEnv
-  , fetchReceiptItems
-  , FetchedReceiptItem
-  ) where
+{-# HLINT ignore "Avoid lambda" #-}
+
+module Receipts.Fetching (fetchReceiptItems, FetchedReceiptItem) where
 
 import Network.HTTP.Simple
   ( getResponseBody, addRequestHeader, setRequestMethod, setRequestBodyJSON
@@ -27,11 +27,12 @@ import Data.Text (Text)
 
 import Data.Function ((&))
 import GHC.Generics (Generic)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import System.Environment (getEnv)
 
 import Shared.JSON ((*:))
 import Optics (makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics, (.~))
+import Control.Monad.Reader (ReaderT (runReaderT), MonadReader (ask))
 
 data Env = Env
   { inn :: String
@@ -47,27 +48,26 @@ data FetchedReceiptItem = FetchedReceiptItem
 
 makeFieldLabelsWith (noPrefixFieldLabels & generateUpdateableOptics .~ False) ''FetchedReceiptItem
 
+fetchReceiptItems :: MonadIO m => String -> m [FetchedReceiptItem]
+fetchReceiptItems qr = do
+  env <- liftIO mkEnv
+  flip runReaderT env $
+    getSessionId >>= concatMapM \sessionId ->
+      getTicketId sessionId qr >>= concatMapM \ticketId ->
+        getReceiptItems sessionId ticketId
+  where
+    concatMapM :: (Traversable t, Monad m) => (a -> m [b]) -> t a -> m [b]
+    concatMapM f xs = concat <$> mapM f xs
+
 mkEnv :: IO Env
 mkEnv = Env
   <$> getEnv "RECEIPTS_INN"
   <*> getEnv "RECEIPTS_PASSWORD"
   <*> getEnv "RECEIPTS_CLIENT_SECRET"
 
-class Monad m => MonadEnvReader m where
-  askEnv :: m Env
-
-fetchReceiptItems :: (MonadIO m, MonadEnvReader m) => String -> m [FetchedReceiptItem]
-fetchReceiptItems qr =
-  getSessionId >>= concatMapM \sessionId ->
-    getTicketId sessionId qr >>= concatMapM
-      (getReceiptItems sessionId)
-  where
-    concatMapM :: (Traversable t, Monad m) => (a -> m [b]) -> t a -> m [b]
-    concatMapM f xs = concat <$> mapM f xs
-
-getSessionId :: (MonadIO m, MonadEnvReader m) => m (Maybe String)
+getSessionId :: (MonadIO m, MonadReader Env m) => m (Maybe String)
 getSessionId = do
-  Env{ inn, password, clientSecret } <- askEnv
+  Env{ inn, password, clientSecret } <- ask
   let payload = object
         [ "inn" .= inn
         , "password" .= password
@@ -82,7 +82,7 @@ getSessionId = do
   let mSessionId = mResponseBody >>= parseMaybe (.: "sessionId")
   return mSessionId
 
-getTicketId :: (MonadIO m, MonadEnvReader m) => String -> String -> m (Maybe String)
+getTicketId :: (MonadIO m, MonadReader Env m) => String -> String -> m (Maybe String)
 getTicketId sessionId qr = do
   let request = baseRequest
         & setRequestMethod "POST"

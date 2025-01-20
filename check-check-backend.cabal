@@ -27,7 +27,6 @@ executable check-check-backend-exe
       ReceiptItemMaps.API
       ReceiptItemMaps.Persistence
       ReceiptItemMaps.Types
-      Receipts
       Receipts.API
       Receipts.API.GetReceipt
       Receipts.Domain.Receipt
