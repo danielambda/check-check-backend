@@ -35,10 +35,10 @@ executable check-check-backend-exe
       Receipts.Fetching
       Receipts.Persistence
       Shared.ByteStringParsableEnum
-      Shared.Classes.FromDomain
-      Shared.Classes.ToDomain
+      Shared.DomainTypes
       Shared.JSON
       Shared.Persistence
+      Shared.TuppledFieldsOptics
       Shared.Types.Internal
       Shared.Types.Positive
       Shared.Types.TextLenRange
