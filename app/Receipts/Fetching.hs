@@ -1,17 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell, DataKinds
+  , FlexibleInstances, TypeFamilies
+  , UndecidableInstances, TypeOperators
+  #-}
 
 module Receipts.Fetching
-  ( Env, mkEnv, MonadEnvReader, askEnv
-  , fetchReceiptItems, fetchedToDomain
+  ( Env, mkEnv, MonadEnvReader , askEnv
+  , fetchReceiptItems
+  , FetchedReceiptItem
   ) where
 
 import Network.HTTP.Simple
@@ -30,8 +31,7 @@ import Control.Monad.IO.Class (MonadIO)
 import System.Environment (getEnv)
 
 import Shared.JSON ((*:))
-import Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem)
-import Shared.Types.Positive (mkPositive)
+import Optics (makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics, (.~))
 
 data Env = Env
   { inn :: String
@@ -44,6 +44,8 @@ data FetchedReceiptItem = FetchedReceiptItem
   , price :: Integer
   , quantity :: Double
   } deriving (Generic, FromJSON)
+
+makeFieldLabelsWith (noPrefixFieldLabels & generateUpdateableOptics .~ False) ''FetchedReceiptItem
 
 mkEnv :: IO Env
 mkEnv = Env
@@ -61,13 +63,7 @@ fetchReceiptItems qr =
       (getReceiptItems sessionId)
   where
     concatMapM :: (Traversable t, Monad m) => (a -> m [b]) -> t a -> m [b]
-    concatMapM f xs = fmap concat (mapM f xs)
-
-fetchedToDomain :: FetchedReceiptItem -> Maybe ReceiptItem
-fetchedToDomain FetchedReceiptItem{ name, price, quantity } = do
-  posPrice <- mkPositive price
-  posQuantity <- mkPositive quantity
-  return $ mkReceiptItem (name, posPrice, posQuantity)
+    concatMapM f xs = concat <$> mapM f xs
 
 getSessionId :: (MonadIO m, MonadEnvReader m) => m (Maybe String)
 getSessionId = do
@@ -132,3 +128,4 @@ baseRequest = defaultRequest
   & addRequestHeader "clientVersion"   "2.9.0"
   & addRequestHeader "Accept-Language" "ru-RU;q=1, en-US;q=0.9"
   & addRequestHeader "User-Agent"      "billchecker/2.9.0 (iPhone; iOS 13.6; Scale/2.00)"
+
