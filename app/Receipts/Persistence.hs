@@ -8,6 +8,7 @@
   , UndecidableInstances, TypeOperators
   #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Receipts.Persistence
   ( getReceiptItemsFromDb
@@ -31,10 +32,11 @@ import Data.Function ((&))
 import GHC.Generics (Generic)
 
 import Shared.Persistence (MonadConnPoolReader, sql, query, execute_, executeMany)
-import Shared.TuppledFieldsOptics (tuppledFields4)
+import Shared.TuppledFieldsOptics (tuppledFields5)
 
 data DbReceiptItem = DbReceiptItem
-  { name :: Text
+  { index :: Int
+  , name :: Text
   , price :: Integer
   , quantity :: Double
   } deriving (Generic, FromRow)
@@ -44,7 +46,7 @@ makeFieldLabelsWith (noPrefixFieldLabels & generateUpdateableOptics .~ False) ''
 getReceiptItemsFromDb :: MonadConnPoolReader m
                       => String -> m [DbReceiptItem]
 getReceiptItemsFromDb qr = query [sql|
-  SELECT name, price, quantity FROM receipt_items WHERE qr = ?
+  SELECT index, name, price, quantity FROM receipt_items WHERE qr = ?
 |] (Only qr)
 
 -- addReceiptItemsToDb :: MonadConnPoolReader m
@@ -56,16 +58,18 @@ addReceiptItemsToDb ::
   , Is price A_Getter,    LabelOptic "price"    price    a a priceT    priceT,    ToField priceT
   , Is quantity A_Getter, LabelOptic "quantity" quantity a a quantityT quantityT, ToField quantityT
   , MonadConnPoolReader f
-  ) => String -> [a] -> f ()
-addReceiptItemsToDb qr receiptItems = void $ executeMany [sql|
-  INSERT INTO receipt_items (name, price, quantity, qr) VALUES (?, ?, ?, ?)
-|] (tuppled <$> receiptItems)
-  where tuppled = view $ tuppledFields4 #name #price #quantity (to $ const qr)
+  ) => String -> [(Int, a)] -> f ()
+addReceiptItemsToDb qr iReceiptItems = void $ executeMany [sql|
+  INSERT INTO receipt_items (name, price, quantity, qr, index) VALUES (?, ?, ?, ?, ?)
+|] (tuppled <$> iReceiptItems)
+  where tuppled = uncurry $ \index ->
+          view $ tuppledFields5 #name #price #quantity (to $ const qr) (to $ const index)
 
 createReceiptItemsTable :: MonadConnPoolReader m => m ()
 createReceiptItemsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS receipt_items
   ( qr TEXT NOT NULL
+  , index SMALLINT NOT NULL
   , name TEXT NOT NULL
   , price INTEGER NOT NULL
   , quantity REAL NOT NULL

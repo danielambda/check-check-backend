@@ -4,9 +4,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module Receipts.Domain.Receipt (Receipt, mkReceipt) where
+module Receipts.Domain.Receipt (Receipt, mkReceipt, receiptItems) where
 
-import Optics (LabelOptic(labelOptic), A_Getter, to, view)
+import Optics (view, ifolding, IxFold)
 
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList)
 import GHC.Generics (Generic)
@@ -18,8 +18,8 @@ newtype Receipt = Receipt
   { items :: NonEmpty ReceiptItem
   } deriving (Generic)
 
-instance LabelOptic "items" A_Getter Receipt Receipt [ReceiptItem] [ReceiptItem] where
-  labelOptic = to $ toList . items
+receiptItems :: IxFold Int Receipt ReceiptItem
+receiptItems = ifolding (toList . items)
 
 mkReceipt :: [ReceiptItem] -> Maybe Receipt
 mkReceipt

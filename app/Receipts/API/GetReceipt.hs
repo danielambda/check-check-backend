@@ -3,9 +3,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module Receipts.API.GetReceipt (GetReceipt, getReceipt) where
@@ -13,18 +10,19 @@ module Receipts.API.GetReceipt (GetReceipt, getReceipt) where
 import Servant (ServerT, Capture, (:>), JSON, Get)
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
-import Optics (view, (^.), (%))
+import Optics (view, (^.), (%), itoListOf, toListOf, imap)
 
 import Control.Monad (forM_)
 import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
+import Data.Function ((&))
 
 import Shared.Persistence (MonadConnPoolReader)
 import Shared.Types.Positive (mkPositive)
 import Shared.TuppledFieldsOptics (tuppledFields3)
 import Receipts.Fetching (MonadEnvReader, fetchReceiptItems, FetchedReceiptItem)
 import Receipts.Persistence (getReceiptItemsFromDb, addReceiptItemsToDb, DbReceiptItem)
-import Receipts.Domain.Receipt (Receipt, mkReceipt)
+import Receipts.Domain.Receipt (Receipt, mkReceipt, receiptItems)
 import Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem)
 
 type GetReceipt =
@@ -42,7 +40,8 @@ getReceipt qr = do
         let items = mapMaybe fromFetched fetchedItems
         let mReceipt = mkReceipt items
         forM_ mReceipt $ \receipt -> do
-          addReceiptItemsToDb qr $ receipt ^. #items
+          let processedItems = receipt & itoListOf receiptItems
+          addReceiptItemsToDb qr  processedItems
         return mReceipt
       else do
         let items = mapMaybe fromDb receiptItemsFromDb
@@ -63,21 +62,27 @@ fromDb dbItem = do
   posQuantity <- mkPositive quantity
   return $ mkReceiptItem name posPrice posQuantity
 
-newtype ReceiptResp = ReceiptResp [ReceiptItemResp]
-  deriving newtype (ToJSON)
+newtype ReceiptResp = ReceiptResp
+ { items :: [ReceiptItemResp]
+ } deriving (Generic, ToJSON)
 
 data ReceiptItemResp = ReceiptItemResp
-  { name :: Text
+  { index :: Int
+  , name :: Text
   , quantity :: Double
   , price :: Integer
   } deriving (Generic, ToJSON)
 
 toResponse :: Receipt -> ReceiptResp
-toResponse = ReceiptResp <$>
-  map itemToResponse . view #items
+toResponse
+  = ReceiptResp
+  . imap itemToResp
+  . toListOf receiptItems
   where
-    itemToResponse = ReceiptItemResp
-      <$> view #name
+    itemToResp :: Int -> ReceiptItem -> ReceiptItemResp
+    itemToResp index = ReceiptItemResp
+      <$> const index
+      <*> view #name
       <*> view (#quantity % #value)
       <*> view (#price % #value)
 
