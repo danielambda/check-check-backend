@@ -6,7 +6,7 @@
 
 module Receipts.Domain.Receipt (Receipt, mkReceipt, receiptItems) where
 
-import Optics (view, ifolding, IxFold)
+import Optics (view, Fold, folding)
 
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList)
 import GHC.Generics (Generic)
@@ -18,8 +18,8 @@ newtype Receipt = Receipt
   { items :: NonEmpty ReceiptItem
   } deriving (Generic)
 
-receiptItems :: IxFold Int Receipt ReceiptItem
-receiptItems = ifolding (toList . items)
+receiptItems :: Fold Receipt (Int, ReceiptItem)
+receiptItems = folding $ zip [0..] . toList . items
 
 mkReceipt :: [ReceiptItem] -> Maybe Receipt
 mkReceipt

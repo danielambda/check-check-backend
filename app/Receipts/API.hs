@@ -1,15 +1,21 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module Receipts.API (ReceiptsAPI, receiptsServer) where
 
 import Servant ((:>), ServerT)
 
-import Shared.Persistence (MonadConnPoolReader)
-import Receipts.API.GetReceipt (GetReceipt, getReceipt)
+import Receipts.GetReceipt.Endpoint (GetReceipt, getReceipt)
+import Receipts.Infrastructure.Fetching (ReceiptsFetchingT (runReceiptsFetchingT))
+import Receipts.Infrastructure.Persistence (ReceiptsRepositoryT(runReceiptsRepositoryT))
+import Control.Monad.IO.Class (MonadIO)
 
 type ReceiptsAPI = "receipts" :> GetReceipt
 
-receiptsServer :: MonadConnPoolReader m => ServerT ReceiptsAPI m
-receiptsServer = getReceipt
+receiptsServer :: (MonadIO m) => ServerT ReceiptsAPI m
+receiptsServer = getReceipt'
+  where
+    getReceipt'
+      = runReceiptsFetchingT
+      . runReceiptsRepositoryT
+      . getReceipt

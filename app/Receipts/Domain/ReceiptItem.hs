@@ -1,13 +1,19 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TemplateHaskell, DataKinds
+  , FlexibleInstances, TypeFamilies
+  , UndecidableInstances, TypeOperators
+  #-}
+
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem, tryMerge) where
 
 import Data.Text (Text)
-import Optics (LabelOptic(labelOptic), A_Getter, (^.), (%~), sets, Setter)
-import Optics.Getter (to)
+import Optics
+  ( (^.), (%~), sets, Setter, (.~)
+  , makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics,
+  )
 
 import Shared.Types.Positive (Positive, plus)
 import Data.Function ((&))
@@ -18,12 +24,7 @@ data ReceiptItem = ReceiptItem
   , quantity :: Positive Double
   }
 
-instance LabelOptic "name" A_Getter ReceiptItem ReceiptItem Text Text where
-  labelOptic = to name
-instance LabelOptic "price" A_Getter ReceiptItem ReceiptItem (Positive Integer) (Positive Integer) where
-  labelOptic = to price
-instance LabelOptic "quantity" A_Getter ReceiptItem ReceiptItem (Positive Double) (Positive Double) where
-  labelOptic = to quantity
+makeFieldLabelsWith (noPrefixFieldLabels & generateUpdateableOptics .~ False) ''ReceiptItem
 
 mkReceiptItem :: Text -> Positive Integer -> Positive Double -> ReceiptItem
 mkReceiptItem = ReceiptItem
