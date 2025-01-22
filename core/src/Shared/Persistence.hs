@@ -20,20 +20,21 @@ import Database.PostgreSQL.Simple.FromField
   ( FromField, FieldParser
   , typename, returnError
   )
+import Database.PostgreSQL.Simple.SqlQQ (sql)
 import qualified Database.PostgreSQL.Simple as PG
   ( query, query_, execute_
   , execute, executeMany
   , withTransaction
   )
 import Control.Monad.Reader (ReaderT (runReaderT), MonadReader (ask))
+import Data.ByteString (ByteString)
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Data (Typeable)
 import Data.Maybe (listToMaybe)
 import Data.Int (Int64)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Database.PostgreSQL.Simple.SqlQQ (sql)
-import Data.Data (Typeable)
+
 import Shared.ByteStringParsableEnum (ByteStringParsableEnum, parseEnumBS)
-import Data.ByteString (ByteString)
 
 class Monad m => MonadConnPoolReader m where
   askConnPool :: m Connection

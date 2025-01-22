@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Shared.Types.TextMinLen (TextMinLen, mkTextMinLen, unTextMinLen) where
+module SmartPrimitives.TextMinLen (TextMinLen, mkTextMinLen, unTextMinLen) where
 
 import Servant (parseUrlPiece, FromHttpApiData)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
@@ -16,7 +16,7 @@ import GHC.TypeLits (Nat, KnownNat, natVal)
 import Data.Data (Proxy (Proxy))
 import Data.String (IsString (fromString))
 
-import Shared.Types.Internal (mkFromField, mkParseJSON, mkParseUrlPiece)
+import SmartPrimitives.Internal (mkFromField, mkParseJSON, mkParseUrlPiece)
 
 newtype TextMinLen (n :: Nat) = TextMinLen Text
 

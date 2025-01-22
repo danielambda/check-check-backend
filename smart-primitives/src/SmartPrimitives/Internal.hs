@@ -1,4 +1,4 @@
-module Shared.Types.Internal
+module SmartPrimitives.Internal
   ( mkParseJSON
   , mkParseUrlPiece
   , mkFromField

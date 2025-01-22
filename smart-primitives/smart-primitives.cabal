@@ -1,0 +1,31 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           smart-primitives
+version:        0.1.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      SmartPrimitives.Positive
+      SmartPrimitives.TextLenRange
+      SmartPrimitives.TextMaxLen
+      SmartPrimitives.TextMinLen
+  other-modules:
+      SmartPrimitives.Internal
+      Paths_smart_primitives
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , optics
+    , postgresql-simple
+    , servant-server
+    , text
+  default-language: Haskell2010

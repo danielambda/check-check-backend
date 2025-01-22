@@ -15,8 +15,9 @@ import Optics
   , makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics,
   )
 
-import Shared.Types.Positive (Positive, plus)
 import Data.Function ((&))
+
+import SmartPrimitives.Positive (Positive, plus)
 
 data ReceiptItem = ReceiptItem
   { name :: Text

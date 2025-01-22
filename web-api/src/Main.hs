@@ -9,22 +9,17 @@ import Network.Wai.Middleware.Cors
 import Database.PostgreSQL.Simple (Connection, connectPostgreSQL)
 import Data.ByteString.Char8 as B (pack)
 
-import System.Environment (getEnv, getArgs)
+import System.Environment (getEnv)
 
-import InitDb (initDb)
-import App (Env(..), application)
-import Control.Monad.Reader (ReaderT(runReaderT))
+import WebAPI (Env(..), application)
 
 main :: IO ()
 main = do
   loadFile defaultConfig
-  conn <- connectPostgreSQL . B.pack =<< getEnv "POSTGRESQL_CONNECTION_STRING"
-  args <- getArgs
 
-  if "initdb" `elem` args then
-    runReaderT initDb conn
-  else
-    runAPI conn
+  getEnv "POSTGRESQL_CONNECTION_STRING"
+  >>= connectPostgreSQL . B.pack
+  >>= runAPI
 
 runAPI :: Connection -> IO ()
 runAPI conn = do

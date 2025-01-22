@@ -1,13 +1,13 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
-module Receipts.API (ReceiptsAPI, receiptsServer) where
+module WebAPI.Receipts (ReceiptsAPI, receiptsServer) where
 
 import Servant ((:>), ServerT)
 
 import Control.Monad.IO.Class (MonadIO)
 
-import Receipts.GetReceipt.Endpoint (GetReceipt, getReceipt)
+import WebAPI.Receipts.GetReceipt (GetReceipt, getReceipt)
 import Receipts.Infrastructure.Fetching (ReceiptsFetchingT (runReceiptsFetchingT))
 import Receipts.Infrastructure.Persistence (ReceiptsRepositoryT(runReceiptsRepositoryT))
 import Shared.Persistence (MonadConnPoolReader)

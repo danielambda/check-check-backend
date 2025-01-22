@@ -1,0 +1,35 @@
+name: core
+version: 0.1.0.0
+library:
+  source-dirs: src
+  exposed-modules:
+    - Receipts.Domain.Receipt
+    - Receipts.Domain.ReceiptItem
+    - Receipts.GetReceipt.Implementation
+    - Receipts.Infrastructure.Fetching
+    - Receipts.Infrastructure.Persistence
+    - Shared.Persistence
+    - Shared.JSON
+
+  dependencies:
+  - smart-primitives
+  - base >= 4.7 && < 5
+  - http-conduit
+  - aeson
+  - bytestring
+  - postgresql-simple
+  - mtl
+  - uuid
+  - text
+  - optics
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints

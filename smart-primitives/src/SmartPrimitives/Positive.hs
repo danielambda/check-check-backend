@@ -4,20 +4,20 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Shared.Types.Positive (Positive, mkPositive, unPositive, plus, mult) where
+module SmartPrimitives.Positive (Positive, mkPositive, unPositive, plus, mult) where
 
 import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.ToField (ToField)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
 import Data.Aeson (FromJSON, parseJSON, ToJSON)
-
-import Data.Data (Typeable)
-
-import Shared.Types.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
-import Data.String (IsString)
 import Optics (A_Getter)
 import Optics.Label (LabelOptic (labelOptic))
 import Optics.Getter (to)
+
+import Data.Data (Typeable)
+import Data.String (IsString)
+
+import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 
 newtype Positive a = Positive a
   deriving (ToJSON, ToField)

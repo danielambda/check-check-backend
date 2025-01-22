@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Shared.Types.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen) where
+module SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen) where
 
 import Servant (FromHttpApiData, parseUrlPiece)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
@@ -16,7 +16,7 @@ import GHC.TypeLits (Nat, KnownNat, natVal)
 import Data.Data (Proxy (Proxy))
 import Data.String (IsString (fromString))
 
-import Shared.Types.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
+import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 
 newtype TextMaxLen (n :: Nat) = TextMaxLen Text
 

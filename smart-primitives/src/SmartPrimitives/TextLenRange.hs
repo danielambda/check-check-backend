@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Shared.Types.TextLenRange (TextLenRange, mkTextLenRange, unTextLenRange) where
+module SmartPrimitives.TextLenRange (TextLenRange, mkTextLenRange, unTextLenRange) where
 
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -16,7 +16,7 @@ import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
 import Data.Aeson (FromJSON (parseJSON))
 
-import Shared.Types.Internal (mkFromFieldEither, mkParseUrlPieceEither, mkParseJSONEither)
+import SmartPrimitives.Internal (mkFromFieldEither, mkParseUrlPieceEither, mkParseJSONEither)
 
 newtype TextLenRange (min :: Nat) (max :: Nat) = TextLenRange Text
 

@@ -8,7 +8,7 @@ import Data.Maybe (mapMaybe)
 import Data.Foldable (traverse_)
 import Data.Function ((&))
 
-import Shared.Types.Positive (mkPositive)
+import SmartPrimitives.Positive (mkPositive)
 import Receipts.MonadClasses.ReceiptsFetching (ReceiptsFetching(..), FetchedReceiptItem(..))
 import Receipts.MonadClasses.ReceiptsRepository (ReceiptsRepository(..))
 import Receipts.Domain.Receipt (Receipt, mkReceipt)

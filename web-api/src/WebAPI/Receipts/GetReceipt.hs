@@ -5,7 +5,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
-module Receipts.GetReceipt.Endpoint (GetReceipt, getReceipt) where
+module WebAPI.Receipts.GetReceipt (GetReceipt, getReceipt) where
 
 import Servant (ServerT, Capture, (:>), JSON, Get)
 import Data.Aeson (ToJSON)
