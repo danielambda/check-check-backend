@@ -13,7 +13,6 @@ import System.Environment (getEnv, getArgs)
 
 import InitDb (initDb)
 import App (Env(..), application)
-import Receipts (initReceiptsEnv, ReceiptsEnv)
 import Control.Monad.Reader (ReaderT(runReaderT))
 
 main :: IO ()
@@ -24,12 +23,11 @@ main = do
 
   if "initdb" `elem` args then
     runReaderT initDb conn
-  else do
-    receiptsEnv <- initReceiptsEnv
-    runAPI conn receiptsEnv
+  else
+    runAPI conn
 
-runAPI :: Connection -> ReceiptsEnv -> IO ()
-runAPI conn receiptsEnv = do
+runAPI :: Connection -> IO ()
+runAPI conn = do
   putStrLn $ "   Hello! The app is running on port " <> show port
   run port $ corsPolicy $ application env
     where
@@ -37,7 +35,6 @@ runAPI conn receiptsEnv = do
       env = Env
         { envConnPool = conn
         , envPort = port
-        , envReceiptsEnv = receiptsEnv
         }
       corsPolicy = cors $ const $ Just $ simpleCorsResourcePolicy
         { corsOrigins = Just (["http://localhost:3000"], True)

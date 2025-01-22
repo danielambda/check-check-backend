@@ -12,27 +12,16 @@ executable check-check-backend-exe
   main-is: Main.hs
   other-modules:
       App
-      Goods
-      Goods.API
-      Goods.Persistence
-      Goods.Types
-      Groups
-      Groups.API
-      Groups.Persistence
-      Groups.Storage.API
-      Groups.Types
-      Groups.Users.API
       InitDb
-      ReceiptItemMaps
-      ReceiptItemMaps.API
-      ReceiptItemMaps.Persistence
-      ReceiptItemMaps.Types
       Receipts.API
-      Receipts.API.GetReceipt
       Receipts.Domain.Receipt
       Receipts.Domain.ReceiptItem
-      Receipts.Fetching
-      Receipts.Persistence
+      Receipts.GetReceipt.Endpoint
+      Receipts.GetReceipt.Implementation
+      Receipts.Infrastructure.Fetching
+      Receipts.Infrastructure.Persistence
+      Receipts.MonadClasses.ReceiptsFetching
+      Receipts.MonadClasses.ReceiptsRepository
       Shared.ByteStringParsableEnum
       Shared.DomainTypes
       Shared.JSON
@@ -43,10 +32,6 @@ executable check-check-backend-exe
       Shared.Types.TextLenRange
       Shared.Types.TextMaxLen
       Shared.Types.TextMinLen
-      Users
-      Users.API
-      Users.Persistence
-      Users.Types
       Paths_check_check_backend
   hs-source-dirs:
       app

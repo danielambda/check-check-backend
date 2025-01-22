@@ -2,7 +2,7 @@
 
 module Shared.Persistence
   ( mkEnumFieldParser, sql, Only(Only)
-  , MonadConnPoolReader , askConnPool
+  , MonadConnPoolReader, askConnPool
   , query, query_
   , execute, execute_
   , queryMaybe
@@ -35,10 +35,10 @@ import Data.Data (Typeable)
 import Shared.ByteStringParsableEnum (ByteStringParsableEnum, parseEnumBS)
 import Data.ByteString (ByteString)
 
-class MonadIO m => MonadConnPoolReader m where
+class Monad m => MonadConnPoolReader m where
   askConnPool :: m Connection
 
-instance MonadIO m => MonadConnPoolReader (ReaderT Connection m) where
+instance Monad m => MonadConnPoolReader (ReaderT Connection m) where
   askConnPool = ask
 
 mkEnumFieldParser :: (Typeable a, ByteStringParsableEnum a) => ByteString -> FieldParser a
@@ -52,46 +52,46 @@ mkEnumFieldParser enumName field mdata = do
       Nothing -> returnError ConversionFailed field (show bs)
       Just x  -> return x
 
-liftToMonadConstraints :: MonadConnPoolReader m
+liftToMonadConstraints :: (MonadIO m, MonadConnPoolReader m)
                        => (Connection -> Query -> q -> IO a) -> (Query -> q -> m a)
 liftToMonadConstraints f queryText params = do
   conn <- askConnPool
   liftIO $ f conn queryText params
 
-liftToMonadConstraints_ :: MonadConnPoolReader m
+liftToMonadConstraints_ :: (MonadIO m, MonadConnPoolReader m)
                         => (Connection -> Query -> IO a) -> (Query -> m a)
 liftToMonadConstraints_ f queryText = do
   conn <- askConnPool
   liftIO $ f conn queryText
 
-query :: (MonadConnPoolReader m, ToRow q, FromRow r)
+query :: (MonadIO m, MonadConnPoolReader m, ToRow q, FromRow r)
       => Query -> q -> m [r]
 query = liftToMonadConstraints PG.query
 
-query_ :: (MonadConnPoolReader m, FromRow r)
+query_ :: (MonadIO m, MonadConnPoolReader m, FromRow r)
        => Query -> m [r]
 query_ = liftToMonadConstraints_ PG.query_
 
-execute :: (MonadConnPoolReader m, ToRow q)
+execute :: (MonadIO m, MonadConnPoolReader m, ToRow q)
         => Query -> q -> m Int64
 execute = liftToMonadConstraints PG.execute
 
-execute_ :: MonadConnPoolReader m
+execute_ :: (MonadIO m, MonadConnPoolReader m)
          => Query -> m Int64
 execute_ = liftToMonadConstraints_ PG.execute_
 
-queryMaybe :: (MonadConnPoolReader m, ToRow q, FromRow r)
+queryMaybe :: (MonadIO m, MonadConnPoolReader m, ToRow q, FromRow r)
            => Query -> q -> m (Maybe r)
 queryMaybe = (fmap listToMaybe .) . query
 
-querySingleField :: (MonadConnPoolReader m, ToRow q, FromField f)
+querySingleField :: (MonadIO m, MonadConnPoolReader m, ToRow q, FromField f)
                  => Query -> q -> m f
 querySingleField = (fmap (fromOnly . head) .) . query
 
-executeMany :: (MonadConnPoolReader m, ToRow q) => Query -> [q] -> m Int64
+executeMany :: (MonadIO m, MonadConnPoolReader m, ToRow q) => Query -> [q] -> m Int64
 executeMany = liftToMonadConstraints PG.executeMany
 
-withTransaction :: MonadConnPoolReader m => ReaderT Connection IO a -> m a
+withTransaction :: (MonadIO m, MonadConnPoolReader m) => ReaderT Connection IO a -> m a
 withTransaction actions = do
   conn <- askConnPool
   let actionsIO = actions `runReaderT` conn

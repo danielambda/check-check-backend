@@ -3,7 +3,8 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Shared.TuppledFieldsOptics
-  ( tuppledFields3, tuppledFields4
+  ( tuppledFields2
+  , tuppledFields3, tuppledFields4
   , tuppledFields5, tuppledFields6
   , tuppledFields7, tuppledFields8
   , tuppledFields9, tuppledFields10
@@ -12,6 +13,10 @@ module Shared.TuppledFieldsOptics
   ) where
 
 import Optics (view, to)
+
+tuppledFields2 field1 field2 = to $ (,)
+  <$> view field1
+  <*> view field2
 
 tuppledFields3 field1 field2 field3 = to $ (,,)
   <$> view field1
