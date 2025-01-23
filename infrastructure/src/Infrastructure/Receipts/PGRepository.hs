@@ -32,23 +32,22 @@ import SmartPrimitives.Positive (mkPositive)
 import Core.Receipts.Domain.Receipt (Receipt, receiptItems, mkReceipt)
 import Core.Receipts.Domain.ReceiptItem (mkReceiptItem)
 import Core.Receipts.MonadClasses.Repository (ReceiptsRepository (..))
-import Infrastructure.Common.Persistence (MonadConnPoolReader)
-import Infrastructure.Common.Persistence (query, execute_, executeMany)
+import Infrastructure.Common.Persistence (MonadConnReader, query, execute_, executeMany)
 
 newtype ReceiptsRepositoryT m a = ReceiptsRepositoryT
   { runReceiptsRepositoryT :: m a }
-  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnPoolReader)
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnReader)
 
 instance MonadTrans ReceiptsRepositoryT where lift = coerce
-instance (MonadTrans t, MonadIO m, MonadConnPoolReader m) => ReceiptsRepository (t (ReceiptsRepositoryT m)) where
+instance (MonadTrans t, MonadIO m, MonadConnReader m) => ReceiptsRepository (t (ReceiptsRepositoryT m)) where
   getReceiptFromRepo = lift . getReceiptFromRepo
   addReceiptToRepo = (lift .) . addReceiptToRepo
 
-instance (MonadIO m, MonadConnPoolReader m) => ReceiptsRepository (ReceiptsRepositoryT m) where
+instance (MonadIO m, MonadConnReader m) => ReceiptsRepository (ReceiptsRepositoryT m) where
   getReceiptFromRepo = getReceiptFromDb
   addReceiptToRepo = addReceiptToDb
 
-getReceiptFromDb :: (MonadIO m, MonadConnPoolReader m)
+getReceiptFromDb :: (MonadIO m, MonadConnReader m)
                  => String -> m (Maybe Receipt)
 getReceiptFromDb qr = do
   getReceiptItemsFromDb qr
@@ -62,13 +61,13 @@ toDomain = mkReceipt . mapMaybe toDomain'
       quantity' <- mkPositive quantity
       return $ mkReceiptItem name price' quantity'
 
-getReceiptItemsFromDb :: (MonadIO m, MonadConnPoolReader m)
+getReceiptItemsFromDb :: (MonadIO m, MonadConnReader m)
                       => String -> m [DbReceiptItem]
 getReceiptItemsFromDb qr = query [sql|
   SELECT qr, index, name, price, quantity FROM receipt_items WHERE qr = ?
 |] (Only qr)
 
-addReceiptToDb :: (MonadIO m, MonadConnPoolReader m)
+addReceiptToDb :: (MonadIO m, MonadConnReader m)
                => String -> Receipt -> m ()
 addReceiptToDb qr receipt = void $ executeMany [sql|
   INSERT INTO receipt_items (name, price, quantity, index, qr) VALUES (?, ?, ?, ?, ?)
@@ -91,7 +90,7 @@ data DbReceiptItem = DbReceiptItem
   , quantity :: Double
   } deriving (Generic, FromRow, ToRow)
 
-createReceiptItemsTable :: (MonadIO m, MonadConnPoolReader m) => m ()
+createReceiptItemsTable :: (MonadIO m, MonadConnReader m) => m ()
 createReceiptItemsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS receipt_items
   ( qr TEXT NOT NULL

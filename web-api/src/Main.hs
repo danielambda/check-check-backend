@@ -6,10 +6,12 @@ import Configuration.Dotenv (loadFile, defaultConfig)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors
   (cors, simpleCorsResourcePolicy, corsMethods, corsOrigins, corsRequestHeaders)
-import Database.PostgreSQL.Simple (Connection, connectPostgreSQL)
+import Database.PostgreSQL.Simple (Connection, connectPostgreSQL, close)
 import Data.ByteString.Char8 as B (pack)
+import Data.Pool (Pool, newPool, defaultPoolConfig, destroyAllResources)
 
 import System.Environment (getEnv)
+import Control.Exception (finally)
 
 import WebAPI (Env(..), application)
 
@@ -17,11 +19,17 @@ main :: IO ()
 main = do
   loadFile defaultConfig
 
-  getEnv "POSTGRESQL_CONNECTION_STRING"
-  >>= connectPostgreSQL . B.pack
-  >>= runAPI
+  connStr <- B.pack <$> getEnv "POSTGRESQL_CONNECTION_STRING"
+  pool <- newPool $ defaultPoolConfig
+    (connectPostgreSQL connStr)
+    close
+    20.0   -- Keepalive time (seconds)
+    50     -- Max resourcesction is kept
 
-runAPI :: Connection -> IO ()
+  runAPI pool
+    `finally` destroyAllResources pool
+
+runAPI :: Pool Connection -> IO ()
 runAPI conn = do
   putStrLn $ "   Hello! The app is running on port " <> show port
   run port $ corsPolicy $ application env

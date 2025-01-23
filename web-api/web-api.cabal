@@ -29,6 +29,7 @@ executable web-api
     , mtl
     , optics
     , postgresql-simple
+    , resource-pool
     , servant-server
     , text
     , uuid

@@ -22,6 +22,7 @@ executable:
   - uuid
   - text
   - optics
+  - resource-pool
 
   ghc-options:
   - -threaded

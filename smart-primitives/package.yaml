@@ -3,10 +3,10 @@ version: 0.1.0.0
 library:
   source-dirs: src
   exposed-modules:
-    - SmartPrimitives.Positive
-    - SmartPrimitives.TextLenRange
-    - SmartPrimitives.TextMaxLen
-    - SmartPrimitives.TextMinLen
+  - SmartPrimitives.Positive
+  - SmartPrimitives.TextLenRange
+  - SmartPrimitives.TextMaxLen
+  - SmartPrimitives.TextMinLen
 
   dependencies:
   - base

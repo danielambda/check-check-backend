@@ -27,13 +27,13 @@ executables:
     main: InitDb.hs
     source-dirs: init-db
     dependencies:
-      - infrastructure
+    - infrastructure
 
-      - base
-      - postgresql-simple
-      - mtl
-      - text
-      - bytestring
+    - base
+    - postgresql-simple
+    - mtl
+    - text
+    - bytestring
 
 ghc-options:
 - -Wall

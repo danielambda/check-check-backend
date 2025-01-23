@@ -11,7 +11,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad (void)
 import System.Environment (getEnv)
 
-import Infrastructure.Common.Persistence (MonadConnPoolReader, withTransaction, execute_)
+import Infrastructure.Common.Persistence (MonadConnReader, withTransaction, execute_)
 import Infrastructure.Receipts.PGRepository (createReceiptItemsTable)
 
 main :: IO ()
@@ -20,12 +20,12 @@ main =
   >>= connectPostgreSQL . B.pack
   >>= runReaderT initDb
 
-initDb :: (MonadIO m, MonadConnPoolReader m) => m ()
+initDb :: (MonadIO m, MonadConnReader m) => m ()
 initDb = withTransaction $ do
   initExtensions
   createReceiptItemsTable
 
-initExtensions :: (MonadIO m, MonadConnPoolReader m) => m ()
+initExtensions :: (MonadIO m, MonadConnReader m) => m ()
 initExtensions = void $ execute_ [sql|
   CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
 |]
