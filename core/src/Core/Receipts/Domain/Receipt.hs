@@ -4,14 +4,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module Receipts.Domain.Receipt (Receipt, mkReceipt, receiptItems) where
+module Core.Receipts.Domain.Receipt (Receipt, mkReceipt, receiptItems) where
 
 import Optics (view, Fold, folding)
 
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList)
 import GHC.Generics (Generic)
 
-import Receipts.Domain.ReceiptItem (ReceiptItem, tryMerge)
+import Core.Receipts.Domain.ReceiptItem (ReceiptItem, tryMerge)
 import Data.List (sortOn)
 
 newtype Receipt = Receipt

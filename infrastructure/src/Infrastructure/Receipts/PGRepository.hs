@@ -8,31 +8,32 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Receipts.Infrastructure.Persistence
-  ( getReceiptFromDb
-  , addReceiptToDb
+module Infrastructure.Receipts.PGRepository
+  ( getReceiptFromDb, addReceiptToDb
   , createReceiptItemsTable
   , ReceiptsRepositoryT(..)
   ) where
 
 import Database.PostgreSQL.Simple (FromRow, Only (Only), ToRow)
+import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Data.Text (Text)
 import Optics ((^.), (%), toListOf)
 
 import Control.Monad (void)
 import Control.Monad.RWS (MonadTrans (lift), MonadIO)
 import GHC.Generics (Generic)
-import Data.Function ((&))
 import Data.Maybe (mapMaybe)
+import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.Coerce (coerce)
 
+import Optics.Tuppled (tuppledFields3)
 import SmartPrimitives.Positive (mkPositive)
-import Shared.Persistence (MonadConnPoolReader, sql, query, execute_, executeMany)
-import Shared.TuppledFieldsOptics (tuppledFields3)
-import Receipts.Domain.Receipt (Receipt, receiptItems, mkReceipt)
-import Receipts.Domain.ReceiptItem (mkReceiptItem)
-import Receipts.MonadClasses.ReceiptsRepository (ReceiptsRepository (..))
+import Core.Receipts.Domain.Receipt (Receipt, receiptItems, mkReceipt)
+import Core.Receipts.Domain.ReceiptItem (mkReceiptItem)
+import Core.Receipts.MonadClasses.Repository (ReceiptsRepository (..))
+import Infrastructure.Common.Persistence (MonadConnPoolReader)
+import Infrastructure.Common.Persistence (query, execute_, executeMany)
 
 newtype ReceiptsRepositoryT m a = ReceiptsRepositoryT
   { runReceiptsRepositoryT :: m a }

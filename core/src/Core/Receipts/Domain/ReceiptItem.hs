@@ -7,7 +7,7 @@
 
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem, tryMerge) where
+module Core.Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem, tryMerge) where
 
 import Data.Text (Text)
 import Optics

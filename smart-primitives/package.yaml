@@ -9,13 +9,13 @@ library:
     - SmartPrimitives.TextMinLen
 
   dependencies:
-  - base >= 4.7 && < 5
+  - base
   - text
+  - bytestring
   - servant-server
   - aeson
   - postgresql-simple
   - optics
-  - bytestring
 
 ghc-options:
 - -Wall

@@ -9,7 +9,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Receipts.Infrastructure.Fetching (ReceiptsFetchingT (runReceiptsFetchingT)) where
+module Infrastructure.Receipts.Fetching (ReceiptsFetchingT (runReceiptsFetchingT)) where
 
 import Network.HTTP.Simple
   ( getResponseBody, addRequestHeader, setRequestMethod, setRequestBodyJSON
@@ -28,8 +28,7 @@ import Control.Monad.Reader (MonadReader (ask), ReaderT (runReaderT))
 import Control.Monad.Trans (MonadTrans (lift))
 import System.Environment (getEnv)
 
-import Shared.JSON ((*:))
-import Receipts.MonadClasses.ReceiptsFetching
+import Core.Receipts.MonadClasses.Fetching
   ( ReceiptsFetching(fetchReceiptItems)
   , FetchedReceiptItem(FetchedReceiptItem, name, quantity, price)
   )
@@ -135,6 +134,8 @@ getReceiptItems sessionId ticketId =
       & setRequestPath ("/v2/tickets/" <> pack ticketId)
 
     parseItems obj = obj .: "ticket" *: "document" *: "receipt" *: "items"
+
+    pObj *: key = pObj >>= (.: key)
 
 baseRequest :: Request
 baseRequest = defaultRequest

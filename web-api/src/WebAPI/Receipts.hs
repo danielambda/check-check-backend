@@ -8,9 +8,9 @@ import Servant ((:>), ServerT)
 import Control.Monad.IO.Class (MonadIO)
 
 import WebAPI.Receipts.GetReceipt (GetReceipt, getReceipt)
-import Receipts.Infrastructure.Fetching (ReceiptsFetchingT (runReceiptsFetchingT))
-import Receipts.Infrastructure.Persistence (ReceiptsRepositoryT(runReceiptsRepositoryT))
-import Shared.Persistence (MonadConnPoolReader)
+import Infrastructure.Receipts.Fetching (ReceiptsFetchingT (runReceiptsFetchingT))
+import Infrastructure.Receipts.PGRepository (ReceiptsRepositoryT(runReceiptsRepositoryT))
+import Infrastructure.Common.Persistence (MonadConnPoolReader)
 
 type ReceiptsAPI = "receipts" :> GetReceipt
 

@@ -1,0 +1,51 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           infrastructure
+version:        0.1.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      Infrastructure.Receipts.Fetching
+      Infrastructure.Receipts.PGRepository
+      Infrastructure.Common.Persistence
+  other-modules:
+      Infrastructure.Common.Persistence.Internal
+      Paths_infrastructure
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , base
+    , bytestring
+    , core
+    , http-conduit
+    , mtl
+    , optics
+    , optics-utils
+    , postgresql-simple
+    , smart-primitives
+    , text
+    , uuid
+  default-language: Haskell2010
+
+executable init-db
+  main-is: InitDb.hs
+  other-modules:
+      Paths_infrastructure
+  hs-source-dirs:
+      init-db
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base
+    , bytestring
+    , infrastructure
+    , mtl
+    , postgresql-simple
+    , text
+  default-language: Haskell2010

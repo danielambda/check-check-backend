@@ -1,4 +1,4 @@
-module Receipts.MonadClasses.ReceiptsFetching
+module Core.Receipts.MonadClasses.Fetching
   ( ReceiptsFetching(..)
   , FetchedReceiptItem(..)
   ) where

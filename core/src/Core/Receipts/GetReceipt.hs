@@ -2,27 +2,27 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ConstraintKinds #-}
 
-module Receipts.GetReceipt.Implementation (getReceipt, Dependencies) where
+module Core.Receipts.GetReceipt (getReceipt, Dependencies) where
 
 import Data.Maybe (mapMaybe)
 import Data.Foldable (traverse_)
 import Data.Function ((&))
 
 import SmartPrimitives.Positive (mkPositive)
-import Receipts.MonadClasses.ReceiptsFetching (ReceiptsFetching(..), FetchedReceiptItem(..))
-import Receipts.MonadClasses.ReceiptsRepository (ReceiptsRepository(..))
-import Receipts.Domain.Receipt (Receipt, mkReceipt)
-import Receipts.Domain.ReceiptItem (mkReceiptItem)
+import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching(..), FetchedReceiptItem(..))
+import Core.Receipts.MonadClasses.Repository (ReceiptsRepository(..))
+import Core.Receipts.Domain.Receipt (Receipt, mkReceipt)
+import Core.Receipts.Domain.ReceiptItem (mkReceiptItem)
 
 type Dependencies m = (ReceiptsRepository m, ReceiptsFetching m)
-getReceipt :: Dependencies m
-           => String -> m (Maybe Receipt)
+getReceipt :: Dependencies m => String -> m (Maybe Receipt)
 getReceipt qr =
   getReceiptFromRepo qr >>=
     maybe fetchAndStoreToRepo (return . Just)
   where
     fetchAndStoreToRepo =
-      fetchReceiptItems qr >>= \fetchedItems -> fetchedItems
+      fetchReceiptItems qr >>= \fetchedItems ->
+      fetchedItems
       & fetchedToDomain
       & traverse_ (addReceiptToRepo qr)
       *>> return

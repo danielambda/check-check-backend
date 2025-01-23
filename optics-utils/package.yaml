@@ -1,19 +1,12 @@
-name: core
+name: optics-utils
 version: 0.1.0.0
 library:
   source-dirs: src
   exposed-modules:
-    - Core.Receipts.Domain.Receipt
-    - Core.Receipts.Domain.ReceiptItem
-    - Core.Receipts.GetReceipt
-    - Core.Receipts.MonadClasses.Fetching
-    - Core.Receipts.MonadClasses.Repository
+    - Optics.Tuppled
 
   dependencies:
-  - smart-primitives
-
   - base
-  - text
   - optics
 
 ghc-options:

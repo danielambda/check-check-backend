@@ -1,16 +1,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
 module WebAPI (Env(..), application) where
 
-import Servant ((:<|>)((:<|>)), Handler, Application, Proxy (Proxy), ServerT, serve, hoistServer)
+import Servant (Handler, Application, Proxy (Proxy), ServerT, serve, hoistServer)
 import Database.PostgreSQL.Simple (Connection)
 import Control.Monad.Reader (ReaderT (runReaderT), asks, MonadReader)
 
 import Control.Monad.IO.Class (MonadIO)
 
-import Shared.Persistence (MonadConnPoolReader, askConnPool)
+import Infrastructure.Common.Persistence (MonadConnPoolReader, askConnPool)
 import WebAPI.Receipts (ReceiptsAPI, receiptsServer)
 
 newtype AppM a = AppM { runAppM :: ReaderT Env Handler a }

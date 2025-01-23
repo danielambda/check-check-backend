@@ -1,0 +1,47 @@
+name: infrastructure
+version: 0.1.0.0
+library:
+  source-dirs: src
+  exposed-modules:
+    - Infrastructure.Receipts.Fetching
+    - Infrastructure.Receipts.PGRepository
+    - Infrastructure.Common.Persistence
+
+  dependencies:
+  - optics-utils
+  - smart-primitives
+  - core
+
+  - base
+  - http-conduit
+  - aeson
+  - bytestring
+  - postgresql-simple
+  - mtl
+  - uuid
+  - text
+  - optics
+
+executables:
+  init-db:
+    main: InitDb.hs
+    source-dirs: init-db
+    dependencies:
+      - infrastructure
+
+      - base
+      - postgresql-simple
+      - mtl
+      - text
+      - bytestring
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints

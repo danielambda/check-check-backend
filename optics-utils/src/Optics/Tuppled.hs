@@ -2,7 +2,7 @@
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
-module Shared.TuppledFieldsOptics
+module Optics.Tuppled
   ( tuppledFields2
   , tuppledFields3, tuppledFields4
   , tuppledFields5, tuppledFields6

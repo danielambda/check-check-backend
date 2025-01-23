@@ -1,8 +1,6 @@
-module Receipts.MonadClasses.ReceiptsRepository
-  ( ReceiptsRepository(..)
-  ) where
+module Core.Receipts.MonadClasses.Repository (ReceiptsRepository(..)) where
 
-import Receipts.Domain.Receipt (Receipt)
+import Core.Receipts.Domain.Receipt (Receipt)
 
 class Monad m => ReceiptsRepository m where
   getReceiptFromRepo :: String -> m (Maybe Receipt)

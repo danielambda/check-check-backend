@@ -6,15 +6,17 @@ executable:
 
   dependencies:
   - core
-  - base >= 4.7 && < 5
+  - infrastructure
+
+  - base
   - servant-server
   - http-conduit
   - aeson
   - wai
+  - wai-cors
   - warp
   - dotenv
   - bytestring
-  - wai-cors
   - postgresql-simple
   - mtl
   - uuid

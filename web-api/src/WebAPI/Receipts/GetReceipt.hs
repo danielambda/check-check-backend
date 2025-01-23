@@ -14,9 +14,9 @@ import Optics ((^.), (%), toListOf)
 
 import GHC.Generics (Generic)
 
-import qualified Receipts.GetReceipt.Implementation as Impl (getReceipt, Dependencies)
-import Receipts.Domain.Receipt (Receipt, receiptItems)
-import Receipts.Domain.ReceiptItem (ReceiptItem)
+import qualified Core.Receipts.GetReceipt as Impl (getReceipt, Dependencies)
+import Core.Receipts.Domain.Receipt (Receipt, receiptItems)
+import Core.Receipts.Domain.ReceiptItem (ReceiptItem)
 
 type GetReceipt =
   Capture "qr" String :> Get '[JSON] (Maybe ReceiptResp)
