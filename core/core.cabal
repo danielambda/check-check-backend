@@ -16,11 +16,14 @@ library
       Core.Receipts.MonadClasses.Fetching
       Core.Receipts.MonadClasses.Repository
   other-modules:
+      Core.Common.MonadClasses.MonadUUID
       Core.Groups.AddGoodsToGroup
       Core.Groups.CreateGroup
+      Core.Groups.Domain.Budget
       Core.Groups.Domain.Group
       Core.Groups.Domain.GroupId
       Core.Groups.Domain.Primitives
+      Core.Groups.MonadClasses.GoodsRepository
       Core.Groups.MonadClasses.Repository
       Core.Users.Domain.User
       Core.Users.Domain.UserId

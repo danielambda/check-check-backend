@@ -4,6 +4,7 @@ library:
   source-dirs: src
   exposed-modules:
   - SmartPrimitives.Positive
+  - SmartPrimitives.NonNegative
   - SmartPrimitives.TextLenRange
   - SmartPrimitives.TextMaxLen
   - SmartPrimitives.TextMinLen
