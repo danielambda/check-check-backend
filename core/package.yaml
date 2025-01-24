@@ -15,6 +15,7 @@ library:
   - base
   - text
   - optics
+  - mtl
 
 ghc-options:
 - -Wall

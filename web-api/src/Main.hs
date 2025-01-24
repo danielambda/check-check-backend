@@ -13,7 +13,8 @@ import Data.Pool (Pool, newPool, defaultPoolConfig, destroyAllResources)
 import System.Environment (getEnv)
 import Control.Exception (finally)
 
-import WebAPI (Env(..), application)
+import WebAPI (application)
+import WebAPI.AppM (Env(..))
 
 main :: IO ()
 main = do

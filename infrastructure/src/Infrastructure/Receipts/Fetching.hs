@@ -25,7 +25,6 @@ import Data.Function ((&))
 import GHC.Generics (Generic)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader (ask), ReaderT (runReaderT))
-import Control.Monad.Trans (MonadTrans (lift))
 import System.Environment (getEnv)
 
 import Core.Receipts.MonadClasses.Fetching
@@ -36,12 +35,6 @@ import Core.Receipts.MonadClasses.Fetching
 newtype ReceiptsFetchingT m a = ReceiptsFetchingT
   { runReceiptsFetchingT :: m a
   } deriving newtype (Functor, Applicative, Monad, MonadIO)
-
-instance (MonadTrans t, MonadIO m) => ReceiptsFetching (t (ReceiptsFetchingT m)) where
-  fetchReceiptItems = lift . fetchReceiptItems
-
-instance MonadTrans ReceiptsFetchingT where
-  lift = ReceiptsFetchingT
 
 instance MonadIO m => ReceiptsFetching (ReceiptsFetchingT m) where
   fetchReceiptItems qr = do

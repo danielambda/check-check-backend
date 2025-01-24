@@ -19,13 +19,12 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Data.Text (Text)
 import Optics ((^.), (%), toListOf)
 
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad (void)
-import Control.Monad.RWS (MonadTrans (lift), MonadIO)
 import GHC.Generics (Generic)
 import Data.Maybe (mapMaybe)
 import Data.Function ((&))
 import Data.Functor ((<&>))
-import Data.Coerce (coerce)
 
 import Optics.Tuppled (tuppledFields3)
 import SmartPrimitives.Positive (mkPositive)
@@ -34,11 +33,14 @@ import Core.Receipts.Domain.ReceiptItem (mkReceiptItem)
 import Core.Receipts.MonadClasses.Repository (ReceiptsRepository (..))
 import Infrastructure.Common.Persistence (MonadConnReader, query, execute_, executeMany)
 
+import Control.Monad.Trans (MonadTrans, lift)
+
 newtype ReceiptsRepositoryT m a = ReceiptsRepositoryT
   { runReceiptsRepositoryT :: m a }
   deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnReader)
 
-instance MonadTrans ReceiptsRepositoryT where lift = coerce
+instance MonadTrans ReceiptsRepositoryT where
+  lift = ReceiptsRepositoryT
 instance (MonadTrans t, MonadIO m, MonadConnReader m) => ReceiptsRepository (t (ReceiptsRepositoryT m)) where
   getReceiptFromRepo = lift . getReceiptFromRepo
   addReceiptToRepo = (lift .) . addReceiptToRepo

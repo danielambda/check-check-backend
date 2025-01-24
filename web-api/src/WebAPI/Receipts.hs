@@ -5,19 +5,11 @@ module WebAPI.Receipts (ReceiptsAPI, receiptsServer) where
 
 import Servant ((:>), ServerT)
 
-import Control.Monad.IO.Class (MonadIO)
-
+import Core.Receipts.MonadClasses.Repository (ReceiptsRepository)
+import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching)
 import WebAPI.Receipts.GetReceipt (GetReceipt, getReceipt)
-import Infrastructure.Receipts.Fetching (ReceiptsFetchingT (runReceiptsFetchingT))
-import Infrastructure.Receipts.PGRepository (ReceiptsRepositoryT(runReceiptsRepositoryT))
-import Infrastructure.Common.Persistence (MonadConnReader)
 
 type ReceiptsAPI = "receipts" :> GetReceipt
 
-receiptsServer :: (MonadIO m, MonadConnReader m) => ServerT ReceiptsAPI m
-receiptsServer = getReceipt'
-  where
-    getReceipt'
-      = runReceiptsRepositoryT
-      . runReceiptsFetchingT
-      . getReceipt
+receiptsServer :: (ReceiptsRepository m, ReceiptsFetching m) => ServerT ReceiptsAPI m
+receiptsServer = getReceipt

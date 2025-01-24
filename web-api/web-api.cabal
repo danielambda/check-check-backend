@@ -12,6 +12,7 @@ executable web-api
   main-is: Main.hs
   other-modules:
       WebAPI
+      WebAPI.AppM
       WebAPI.Receipts
       WebAPI.Receipts.GetReceipt
       Paths_web_api
