@@ -22,15 +22,15 @@ import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 newtype NonNegative a = NonNegative a
   deriving (ToJSON, ToField)
 
+instance LabelOptic "value" A_Getter (NonNegative a) (NonNegative a) a a where
+  labelOptic = to unNonNegative
+
 mkNonNegative :: (Num a, Ord a) => a -> Maybe (NonNegative a)
 mkNonNegative a | a >= 0 = Just $ NonNegative a
                 | otherwise = Nothing
 
 unNonNegative :: NonNegative a -> a
 unNonNegative (NonNegative a) = a
-
-instance LabelOptic "value" A_Getter (NonNegative a) (NonNegative a) a a where
-  labelOptic = to unNonNegative
 
 infixl 6 `plus`
 plus :: Num a => NonNegative a -> NonNegative a -> NonNegative a

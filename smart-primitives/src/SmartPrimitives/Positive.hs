@@ -4,7 +4,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module SmartPrimitives.Positive (Positive, mkPositive, unPositive, plus, mult) where
+module SmartPrimitives.Positive
+  ( Positive, mkPositive, unPositive
+  , plus, mult
+  , sumPositive
+  , ceilingPositive
+  ) where
 
 import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.ToField (ToField)
@@ -18,6 +23,7 @@ import Data.Data (Typeable)
 import Data.String (IsString)
 
 import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
+import Data.List.NonEmpty (NonEmpty)
 
 newtype Positive a = Positive a
   deriving (ToJSON, ToField)
@@ -39,6 +45,12 @@ Positive x `plus` Positive y = Positive $ x + y
 infixl 7 `mult`
 mult :: Num a => Positive a -> Positive a -> Positive a
 Positive x `mult` Positive y = Positive $ x * y
+
+sumPositive :: Num a => NonEmpty (Positive a) -> Positive a
+sumPositive = Positive . sum . fmap unPositive
+
+ceilingPositive :: Positive Double -> Positive Integer
+ceilingPositive = Positive . ceiling . unPositive
 
 parseErrorMsg :: IsString s => s
 parseErrorMsg = "value has to be positive"

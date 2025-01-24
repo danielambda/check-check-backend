@@ -16,12 +16,12 @@ import SmartPrimitives.Positive (Positive)
 
 import Optics
   ( (^.), (%~), sets, Setter, (.~)
-  , makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics, (&),
+  , makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics, (&), LabelOptic (labelOptic), A_Getter, to,
   )
 
 data Budget = Budget
   { amount :: Integer
-  , lowerBound :: Maybe Integer
+  , mLowerBound :: Maybe Integer
   }
 
 makeFieldLabelsWith (noPrefixFieldLabels & generateUpdateableOptics .~ False) ''Budget
@@ -30,6 +30,13 @@ data BudgetLowerBoundStatus
   = NoBudgetLowerBound
   | BudgetLowerBoundExeeded
   | BudgetLowerBoundNotExeeded
+
+instance LabelOptic "lowerBoundStatus" A_Getter Budget Budget BudgetLowerBoundStatus BudgetLowerBoundStatus where
+  labelOptic = to $ \budget -> case budget ^. #mLowerBound of
+    Nothing -> NoBudgetLowerBound
+    Just lowerBound | budget ^. #amount < lowerBound ->
+      BudgetLowerBoundExeeded
+    Just _ | otherwise -> BudgetLowerBoundNotExeeded
 
 amountSetter :: Setter Budget Budget Integer Integer
 amountSetter = sets $ \f budget -> budget{amount = f $ amount budget}
@@ -46,9 +53,4 @@ addMoney money budget = budget & amountSetter %~ (+ money ^. #value)
 spendMoney :: Positive Integer -> Budget -> (Budget, BudgetLowerBoundStatus)
 spendMoney money budget =
   let budget' = budget & amountSetter %~ subtract (money ^. #value)
-      amount' = budget' ^. #amount
-      budgetLowerBoundStatus = case budget' ^. #lowerBound of
-        Nothing -> NoBudgetLowerBound
-        Just lb | amount' < lb -> BudgetLowerBoundExeeded
-        Just _  | otherwise    -> BudgetLowerBoundNotExeeded
-  in (budget', budgetLowerBoundStatus)
+  in (budget', budget' ^. #lowerBoundStatus)
