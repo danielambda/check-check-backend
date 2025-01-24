@@ -16,6 +16,14 @@ library
       Core.Receipts.MonadClasses.Fetching
       Core.Receipts.MonadClasses.Repository
   other-modules:
+      Core.Groups.AddGoodsToGroup
+      Core.Groups.CreateGroup
+      Core.Groups.Domain.Group
+      Core.Groups.Domain.GroupId
+      Core.Groups.Domain.Primitives
+      Core.Groups.MonadClasses.Repository
+      Core.Users.Domain.User
+      Core.Users.Domain.UserId
       Paths_core
   hs-source-dirs:
       src
@@ -26,4 +34,5 @@ library
     , optics
     , smart-primitives
     , text
+    , uuid
   default-language: Haskell2010
