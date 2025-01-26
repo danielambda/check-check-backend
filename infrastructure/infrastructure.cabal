@@ -27,7 +27,6 @@ library
     , http-conduit
     , mtl
     , optics
-    , optics-utils
     , postgresql-simple
     , smart-primitives
     , text

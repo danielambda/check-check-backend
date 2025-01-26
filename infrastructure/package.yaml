@@ -8,7 +8,6 @@ library:
     - Infrastructure.Common.Persistence
 
   dependencies:
-  - optics-utils
   - smart-primitives
   - core
 

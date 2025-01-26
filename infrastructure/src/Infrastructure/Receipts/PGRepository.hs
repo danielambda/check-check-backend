@@ -26,7 +26,6 @@ import Data.Maybe (mapMaybe)
 import Data.Function ((&))
 import Data.Functor ((<&>))
 
-import Optics.Tuppled (tuppledFields3)
 import SmartPrimitives.Positive (mkPositive)
 import Core.Receipts.Domain.Receipt (Receipt, receiptItems, mkReceipt)
 import Core.Receipts.Domain.ReceiptItem (mkReceiptItem)
@@ -81,7 +80,7 @@ toDb qr receipt =
   in toDb' <$> items
     where
       toDb' (index, item) =
-        let (name, price, quantity) = item ^. tuppledFields3 #name (#price % #value) (#quantity % #value)
+        let (name, price, quantity) = item & (,,) <$> (^. #name) <*> (^. #price % #value) <*> (^. #quantity % #value)
         in DbReceiptItem { qr, index, name, price, quantity }
 
 data DbReceiptItem = DbReceiptItem
