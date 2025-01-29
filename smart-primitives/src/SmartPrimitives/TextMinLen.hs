@@ -22,7 +22,7 @@ newtype TextMinLen (n :: Nat) = TextMinLen Text
 
 mkTextMinLen :: forall n. (KnownNat n) => Text -> Maybe (TextMinLen n)
 mkTextMinLen text
-  | T.length text <= minLen = Just (TextMinLen text)
+  | minLen <= T.length text = Just (TextMinLen text)
   | otherwise = Nothing
   where
     minLen = fromInteger $ natVal (Proxy @n)
