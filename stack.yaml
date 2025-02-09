@@ -3,6 +3,7 @@ nix:
   packages:
     - zlib.dev
     - zlib.out
+    - postgresql_17
 
 snapshot: lts-22.43
 

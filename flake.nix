@@ -15,26 +15,13 @@
         pkgs = nixpkgs.legacyPackages.${system};
         hPkgs = pkgs.haskell.packages.ghc966;
 
-        postgresql = pkgs.postgresql_17;
-
-        stack-wrapped = pkgs.symlinkJoin {
-          name = "stack";
-          paths = [pkgs.stack];
-          buildInputs = [pkgs.makeWrapper];
-          postBuild = ''
-            wrapProgram $out/bin/stack \
-              --add-flags "--system-ghc --no-install-ghc"
-          '';
-
-          PG_CONFIG="${postgresql}/bin/pg_config";
-        };
-
         packages = [
-          stack-wrapped
+          pkgs.nixd
 
           hPkgs.ghc
           hPkgs.ghcid
           hPkgs.haskell-language-server
+          pkgs.stack
 
           pkgs.zlib
         ];
