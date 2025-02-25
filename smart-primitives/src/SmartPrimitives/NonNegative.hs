@@ -10,9 +10,8 @@ import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.ToField (ToField)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
 import Data.Aeson (FromJSON, parseJSON, ToJSON)
-import Optics (A_Getter)
+import Optics (A_Getter, to)
 import Optics.Label (LabelOptic (labelOptic))
-import Optics.Getter (to)
 
 import Data.Data (Typeable)
 import Data.String (IsString)
@@ -20,7 +19,7 @@ import Data.String (IsString)
 import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 
 newtype NonNegative a = NonNegative a
-  deriving (ToJSON, ToField)
+  deriving (Eq, Ord, Show, ToJSON, ToField)
 
 instance LabelOptic "value" A_Getter (NonNegative a) (NonNegative a) a a where
   labelOptic = to unNonNegative

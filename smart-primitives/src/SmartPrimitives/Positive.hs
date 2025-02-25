@@ -26,7 +26,7 @@ import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 import Data.List.NonEmpty (NonEmpty)
 
 newtype Positive a = Positive a
-  deriving (ToJSON, ToField)
+  deriving (Eq, Ord, Show, ToJSON, ToField)
 
 mkPositive :: (Num a, Ord a) => a -> Maybe (Positive a)
 mkPositive a | a > 0 = Just $ Positive a

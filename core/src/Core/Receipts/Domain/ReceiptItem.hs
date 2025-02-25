@@ -5,30 +5,24 @@
   , UndecidableInstances, TypeOperators
   #-}
 
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-
-module Core.Receipts.Domain.ReceiptItem (ReceiptItem, mkReceiptItem, tryMerge) where
+module Core.Receipts.Domain.ReceiptItem (ReceiptItem(..), tryMerge) where
 
 import Data.Text (Text)
 import Optics
-  ( (^.), (%~), sets, Setter, (.~)
-  , makeFieldLabelsWith, noPrefixFieldLabels, generateUpdateableOptics,
+  ( (^.), (%~), (&), sets, Setter
+  , makeFieldLabelsNoPrefix
   )
 
-import Data.Function ((&))
-
 import SmartPrimitives.Positive (Positive, plus)
+import Core.Common.Domain.Currency (SomeCurrency)
 
 data ReceiptItem = ReceiptItem
   { name :: Text
-  , price :: Positive Integer
+  , price :: SomeCurrency
   , quantity :: Positive Double
   }
 
-makeFieldLabelsWith (noPrefixFieldLabels & generateUpdateableOptics .~ False) ''ReceiptItem
-
-mkReceiptItem :: Text -> Positive Integer -> Positive Double -> ReceiptItem
-mkReceiptItem = ReceiptItem
+makeFieldLabelsNoPrefix ''ReceiptItem
 
 tryMerge :: ReceiptItem -> ReceiptItem -> Maybe ReceiptItem
 tryMerge item1 item2 =

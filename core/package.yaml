@@ -3,11 +3,34 @@ version: 0.1.0.0
 library:
   source-dirs: src
   exposed-modules:
+    - Core.Common.Domain.Currency
+    - Core.Common.MonadClasses.MonadUUID
+    - Core.Common.MonadClasses.MonadUTCTime
+    - Core.Common.Operators
+
+    - Core.Receipts.Get
     - Core.Receipts.Domain.Receipt
     - Core.Receipts.Domain.ReceiptItem
-    - Core.Receipts.GetReceipt
     - Core.Receipts.MonadClasses.Fetching
     - Core.Receipts.MonadClasses.Repository
+
+    - Core.Users.Domain.User
+    - Core.Users.Domain.UserId
+    - Core.Users.Domain.UserType
+    - Core.Users.Domain.Budget
+    - Core.Users.Domain.Primitives
+    - Core.Users.MonadClasses.Repository
+    - Core.Users.CreateSingle
+    - Core.Users.CreateGroup
+    - Core.Users.Get
+
+    - Core.Users.Requests.Domain.Request
+    - Core.Users.Requests.Domain.RequestId
+    - Core.Users.Requests.Domain.RequestStatus
+    - Core.Users.Requests.MonadClasses.Repository
+    - Core.Users.Requests.SendList
+    - Core.Users.Requests.SendReceiptItems
+    - Core.Users.Requests.GetIncoming
 
   dependencies:
   - smart-primitives
@@ -17,6 +40,7 @@ library:
   - uuid
   - optics
   - mtl
+  - time
 
 ghc-options:
 - -Wall

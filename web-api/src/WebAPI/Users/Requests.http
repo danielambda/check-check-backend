@@ -1,0 +1,45 @@
+### Create User (with budget)
+POST localhost:8080/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "budget": {
+    "initialAmount": 1000,
+    "lowerBound": 500
+  }
+}
+
+### Create User (minimal budget)
+POST localhost:8080/users
+Content-Type: application/json
+
+{
+  "name": "801",
+  "budget": {
+    "initialAmount": 361600,
+    "lowerBound": 50000
+  }
+}
+
+### Create User (no budget)
+POST localhost:8080/users
+Content-Type: application/json
+
+{
+  "name": "Alice Wonderland"
+}
+
+### Create User (explicit null budget)
+POST localhost:8080/users
+Content-Type: application/json
+
+{
+  "name": "Bob Builder",
+  "budget": null
+}
+
+### Get User by invalid UUID
+GET localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a
+
+

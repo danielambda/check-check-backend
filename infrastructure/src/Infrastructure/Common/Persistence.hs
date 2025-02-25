@@ -2,7 +2,7 @@
 
 module Infrastructure.Common.Persistence
   ( MonadConnReader, askConn
-  , query, query_
+  , query, queryMaybe, query_
   , execute, execute_
   , executeMany
   , withTransaction
@@ -18,6 +18,7 @@ import qualified Database.PostgreSQL.Simple as PG
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Int (Int64)
+import Data.Maybe (listToMaybe)
 
 class Monad m => MonadConnReader m where
   askConn :: m Connection
@@ -28,6 +29,10 @@ instance Monad m => MonadConnReader (ReaderT Connection m) where
 query :: (MonadIO m, MonadConnReader m, ToRow q, FromRow r)
       => Query -> q -> m [r]
 query = liftToMonadConstraints PG.query
+
+queryMaybe :: (MonadIO m, MonadConnReader m, ToRow q, FromRow r)
+           => Query -> q -> m (Maybe r)
+queryMaybe queryText q = listToMaybe <$> query queryText q
 
 query_ :: (MonadIO m, MonadConnReader m, FromRow r)
        => Query -> m [r]

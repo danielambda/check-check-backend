@@ -29,6 +29,12 @@
         devShells.default = pkgs.mkShell {
           inherit packages;
 
+          shellHook = ''
+            set -a
+            source ./.env
+            set +a
+          '';
+
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;
         };
       }

@@ -14,7 +14,14 @@ executable web-api
       WebAPI
       WebAPI.AppM
       WebAPI.Receipts
-      WebAPI.Receipts.GetReceipt
+      WebAPI.Receipts.Get
+      WebAPI.Users
+      WebAPI.Users.CreateSingle
+      WebAPI.Users.Get
+      WebAPI.Users.IncomingRequests
+      WebAPI.Users.IncomingRequests.Get
+      WebAPI.Users.OutgoingRequests
+      WebAPI.Users.OutgoingRequests.Send
       Paths_web_api
   hs-source-dirs:
       src
@@ -32,7 +39,9 @@ executable web-api
     , postgresql-simple
     , resource-pool
     , servant-server
+    , smart-primitives
     , text
+    , time
     , uuid
     , wai
     , wai-cors

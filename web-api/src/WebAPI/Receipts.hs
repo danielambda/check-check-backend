@@ -1,15 +1,14 @@
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module WebAPI.Receipts (ReceiptsAPI, receiptsServer) where
 
-import Servant ((:>), ServerT)
+import Servant (ServerT)
 
-import Core.Receipts.MonadClasses.Repository (ReceiptsRepository)
-import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching)
-import WebAPI.Receipts.GetReceipt (GetReceipt, getReceipt)
+import WebAPI.Receipts.Get (GetReceipt, getReceipt)
+import qualified WebAPI.Receipts.Get as Get (Dependencies)
 
-type ReceiptsAPI = "receipts" :> GetReceipt
+type ReceiptsAPI = GetReceipt
 
-receiptsServer :: (ReceiptsRepository m, ReceiptsFetching m) => ServerT ReceiptsAPI m
+receiptsServer :: (Get.Dependencies m) => ServerT ReceiptsAPI m
 receiptsServer = getReceipt

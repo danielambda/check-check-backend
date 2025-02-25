@@ -7,10 +7,8 @@ module Core.Receipts.MonadClasses.Fetching
 
 import Data.Text (Text)
 
-import Control.Monad.Trans (MonadTrans (lift))
-
 class Monad m => ReceiptsFetching m where
-  fetchReceiptItems :: String -> m [FetchedReceiptItem]
+  fetchReceiptItems :: Text -> m [FetchedReceiptItem]
 
 data FetchedReceiptItem = FetchedReceiptItem
   { name :: Text

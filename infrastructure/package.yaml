@@ -3,9 +3,11 @@ version: 0.1.0.0
 library:
   source-dirs: src
   exposed-modules:
+    - Infrastructure.Common.Persistence
     - Infrastructure.Receipts.Fetching
     - Infrastructure.Receipts.PGRepository
-    - Infrastructure.Common.Persistence
+    - Infrastructure.Users.PGRepository
+    - Infrastructure.Users.Requests.PGRepository
 
   dependencies:
   - smart-primitives
@@ -20,6 +22,8 @@ library:
   - uuid
   - text
   - optics
+  - time
+  - unordered-containers
 
 executables:
   init-db:
@@ -33,6 +37,7 @@ executables:
     - mtl
     - text
     - bytestring
+    - dotenv
 
 ghc-options:
 - -Wall

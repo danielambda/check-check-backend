@@ -1,31 +1,29 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module Main (main) where
 
+import Configuration.Dotenv (loadFile, defaultConfig)
 import Data.ByteString.Char8 as B (pack)
 import Database.PostgreSQL.Simple (connectPostgreSQL)
-import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Control.Monad.Reader (ReaderT (runReaderT))
 
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad (void)
 import System.Environment (getEnv)
 
-import Infrastructure.Common.Persistence (MonadConnReader, withTransaction, execute_)
+import Infrastructure.Common.Persistence (MonadConnReader, withTransaction)
 import Infrastructure.Receipts.PGRepository (createReceiptItemsTable)
+import Infrastructure.Users.PGRepository (createUsersTable, createOtherUserIdsTable)
+import Infrastructure.Users.Requests.PGRepository (createRequestsTable, createRequestItemsTable)
 
 main :: IO ()
-main =
+main = do
+  loadFile defaultConfig
   getEnv "POSTGRESQL_CONNECTION_STRING"
-  >>= connectPostgreSQL . B.pack
-  >>= runReaderT initDb
+    >>= connectPostgreSQL . B.pack
+    >>= runReaderT initDb
 
 initDb :: (MonadIO m, MonadConnReader m) => m ()
 initDb = withTransaction $ do
-  initExtensions
   createReceiptItemsTable
-
-initExtensions :: (MonadIO m, MonadConnReader m) => m ()
-initExtensions = void $ execute_ [sql|
-  CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
-|]
+  createUsersTable
+  createOtherUserIdsTable
+  createRequestsTable
+  createRequestItemsTable

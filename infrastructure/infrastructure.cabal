@@ -10,11 +10,14 @@ build-type:     Simple
 
 library
   exposed-modules:
+      Infrastructure.Common.Persistence
       Infrastructure.Receipts.Fetching
       Infrastructure.Receipts.PGRepository
-      Infrastructure.Common.Persistence
+      Infrastructure.Users.PGRepository
+      Infrastructure.Users.Requests.PGRepository
   other-modules:
       Infrastructure.Common.Persistence.Internal
+      Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
       Paths_infrastructure
   hs-source-dirs:
       src
@@ -30,6 +33,8 @@ library
     , postgresql-simple
     , smart-primitives
     , text
+    , time
+    , unordered-containers
     , uuid
   default-language: Haskell2010
 
@@ -43,6 +48,7 @@ executable init-db
   build-depends:
       base
     , bytestring
+    , dotenv
     , infrastructure
     , mtl
     , postgresql-simple

@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SmartPrimitives.TextLenRange (TextLenRange, mkTextLenRange, unTextLenRange) where
 
@@ -14,11 +15,13 @@ import Data.Data (Proxy (Proxy))
 import Data.String (IsString (fromString))
 import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
-import Data.Aeson (FromJSON (parseJSON))
+import Database.PostgreSQL.Simple.ToField (ToField)
+import Data.Aeson (FromJSON (parseJSON), ToJSON)
 
 import SmartPrimitives.Internal (mkFromFieldEither, mkParseUrlPieceEither, mkParseJSONEither)
 
 newtype TextLenRange (min :: Nat) (max :: Nat) = TextLenRange Text
+  deriving (ToField, ToJSON)
 
 data TextLenRangeError
   = TextLenTooShort Int -- Expected min length

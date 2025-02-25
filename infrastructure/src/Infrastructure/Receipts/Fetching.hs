@@ -33,16 +33,15 @@ import Core.Receipts.MonadClasses.Fetching
   )
 
 newtype ReceiptsFetchingT m a = ReceiptsFetchingT
-  { runReceiptsFetchingT :: m a
-  } deriving newtype (Functor, Applicative, Monad, MonadIO)
+  { runReceiptsFetchingT :: m a }
+  deriving newtype (Functor, Applicative, Monad, MonadIO)
 
 instance MonadIO m => ReceiptsFetching (ReceiptsFetchingT m) where
   fetchReceiptItems qr = do
     env <- mkEnv
     map fromDto <$> fetchReceiptItems' qr `runReaderT` env
     where
-      fromDto FetchedReceiptItemDto{ name, price, quantity } =
-        FetchedReceiptItem{..}
+      fromDto FetchedReceiptItemDto{..} = FetchedReceiptItem{..}
 
       mkEnv = liftIO $ Env
         <$> getEnv "RECEIPTS_INN"
@@ -61,7 +60,7 @@ data FetchedReceiptItemDto = FetchedReceiptItemDto
   , quantity :: Double
   } deriving (Generic, FromJSON)
 
-fetchReceiptItems' :: (MonadIO m, MonadReader Env m) => String -> m [FetchedReceiptItemDto]
+fetchReceiptItems' :: (MonadIO m, MonadReader Env m) => Text -> m [FetchedReceiptItemDto]
 fetchReceiptItems' qr =
   getSessionId >>= concatMapM \sessionId ->
     getTicketId sessionId qr >>= concatMapM
@@ -88,7 +87,7 @@ getSessionId = do
     >>= parseMaybe (.: "sessionId")
     & return
 
-getTicketId :: (MonadIO m, MonadReader Env m) => String -> String -> m (Maybe String)
+getTicketId :: (MonadIO m, MonadReader Env m) => String -> Text -> m (Maybe String)
 getTicketId sessionId qr = do
   let request = baseRequest
         & setRequestMethod "POST"
