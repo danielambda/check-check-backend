@@ -18,17 +18,18 @@ module Core.Users.Domain.User
   , newUserSingle, newUserGroup
   ) where
 
-import Core.Common.MonadClasses.MonadUUID (MonadUUID)
-import Core.Users.Domain.Budget (Budget)
-import Core.Users.Domain.UserType (UserType(..))
-import Core.Users.Domain.UserId (UserId, newUserId)
-import Core.Users.Domain.Primitives (Username)
 import Optics
   ( LabelOptic, labelOptic
   , An_AffineTraversal, atraversalVL
   , A_Lens, lensVL
   , (<&>), makeFieldLabelsFor, A_Traversal, traversalVL
   )
+
+import Core.Common.MonadClasses.MonadUUID (MonadUUID)
+import Core.Users.Budget.Domain.Budget (Budget)
+import Core.Users.Domain.Primitives (Username)
+import Core.Users.Domain.UserType (UserType(..))
+import Core.Users.Domain.UserId (UserId, newUserId)
 
 data UserData = UserData
   { username :: Username
@@ -57,8 +58,7 @@ newUserGroup ownerId otherUserIds userData = do
   userId <- newUserId
   return $ UserGroup userId ownerId otherUserIds userData
 
-data SomeUser where
-  SomeUser :: User t -> SomeUser
+data SomeUser where SomeUser :: User t -> SomeUser
 
 -- Optics --
 

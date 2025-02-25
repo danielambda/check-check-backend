@@ -3,7 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 
 module Core.Users.CreateGroup
-  ( Data(..), CreateBudgetData(..)
+  ( Data(..)
   , Dependencies
   , createGroup
   ) where
@@ -14,18 +14,18 @@ import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Common.Operators ((*>>))
-import Core.Users.Common.CreateBudgetData (mkBudget, CreateBudgetData (CreateBudgetData))
+import Core.Users.MonadClasses.Repository (UsersRepository (addUserToRepo, userExistsInRepo))
+import qualified Core.Users.Budget.Create as CreateBudget (create, Data(..))
 import Core.Users.Domain.Primitives (Username(..))
 import Core.Users.Domain.UserId (UserId, SomeUserId (SomeUserId))
 import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Domain.User (newUserGroup, User, UserData (..))
-import Core.Users.MonadClasses.Repository (UsersRepository (addUserToRepo, userExistsInRepo))
 
 data Data = CreateGroupData
   { name :: TextLenRange 2 50
   , ownerId :: UserId 'Single
   , otherUserIds :: [UserId 'Single]
-  , mBudgetData :: Maybe CreateBudgetData
+  , mBudgetData :: Maybe CreateBudget.Data
   }
 
 newtype Error = NonExistingGroupMembers (NonEmpty (UserId 'Single))
@@ -43,7 +43,7 @@ createGroup CreateGroupData{ name, ownerId, otherUserIds, mBudgetData } = do
       where
         userData = UserData
           { username = Username name
-          , mBudget = mkBudget <$> mBudgetData
+          , mBudget = CreateBudget.create <$> mBudgetData
           }
 
 userIdOfNonExisting :: UsersRepository m => UserId t -> m (Maybe (UserId t))

@@ -17,8 +17,7 @@ instance LabelOptic "value" A_Lens (UserId t) (UserId t) UUID UUID where
   labelOptic = lensVL $ \f (UserId userId) ->
     f userId <&> UserId
 
-data SomeUserId where
-  SomeUserId :: UserId t -> SomeUserId
+data SomeUserId where SomeUserId :: UserId t -> SomeUserId
 
 instance LabelOptic "value" A_Lens SomeUserId SomeUserId UUID UUID where
   labelOptic = lensVL $ \f (SomeUserId (UserId userId)) ->

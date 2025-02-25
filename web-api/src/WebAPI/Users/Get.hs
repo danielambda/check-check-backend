@@ -26,7 +26,7 @@ import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.Operators ((^^.))
-import Core.Users.Domain.Budget (Budget)
+import Core.Users.Budget.Domain.Budget (Budget)
 import Core.Users.Domain.UserType (UserType(Single))
 import Core.Users.Domain.User (User)
 import Core.Users.Domain.UserId (UserId(UserId))

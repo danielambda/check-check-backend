@@ -17,12 +17,14 @@ library:
     - Core.Users.Domain.User
     - Core.Users.Domain.UserId
     - Core.Users.Domain.UserType
-    - Core.Users.Domain.Budget
     - Core.Users.Domain.Primitives
     - Core.Users.MonadClasses.Repository
     - Core.Users.CreateSingle
     - Core.Users.CreateGroup
     - Core.Users.Get
+
+    - Core.Users.Budget.Domain.Budget
+    - Core.Users.Budget.Create
 
     - Core.Users.Requests.Domain.Request
     - Core.Users.Requests.Domain.RequestId

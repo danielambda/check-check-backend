@@ -29,9 +29,9 @@ import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Core.Users.Domain.User (User(..), UserData(..), SomeUser(SomeUser))
 import Core.Users.Domain.Primitives (Username(..))
-import Core.Users.Domain.Budget (Budget(Budget))
 import Core.Users.Domain.UserId (UserId (UserId), SomeUserId(SomeUserId))
 import Core.Users.Domain.UserType (UserType(..))
+import Core.Users.Budget.Domain.Budget (Budget(Budget))
 import Infrastructure.Common.Persistence
   (MonadConnReader, execute, executeMany, withTransaction, query, queryMaybe, execute_)
 

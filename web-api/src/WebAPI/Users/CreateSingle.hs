@@ -20,7 +20,7 @@ import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
 import qualified Core.Users.CreateSingle as Impl (createSingle, Dependencies, Data(..))
-import Core.Users.CreateSingle (CreateBudgetData(..))
+import qualified Core.Users.Budget.Create as Impl.Budget (Data(..))
 import WebAPI.Users.Get (UserSingleResp(..), BudgetResp(..), toResp)
 
 type CreateUserSingle =
@@ -42,7 +42,7 @@ createUserSingle CreateUserSingleReqBody{ name, budget } = do
   toResp <$> Impl.createSingle Impl.Data{..}
   where
     mkBudget CreateBudgetReqBody{ initialAmount, lowerBound } =
-      CreateBudgetData { mInitialAmount = initialAmount
+      Impl.Budget.Data { mInitialAmount = initialAmount
                        , mLowerBound = lowerBound
                        }
 
