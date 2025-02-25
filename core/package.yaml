@@ -3,7 +3,7 @@ version: 0.1.0.0
 library:
   source-dirs: src
   exposed-modules:
-    - Core.Common.Domain.Currency
+    - Core.Common.Domain.RubKopecks
     - Core.Common.MonadClasses.MonadUUID
     - Core.Common.MonadClasses.MonadUTCTime
     - Core.Common.Operators

@@ -37,7 +37,7 @@ import Data.List.NonEmpty (NonEmpty, toList)
 
 import SmartPrimitives.Positive (Positive)
 import SmartPrimitives.NonNegative (NonNegative)
-import Core.Common.Domain.Currency (SomeCurrency(SomeCurrency), Currency (Kopecks))
+import Core.Common.Domain.RubKopecks (positiveRubKopecks)
 import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
 import Core.Users.Requests.Domain.Request (Request(..))
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus(Pending))
@@ -97,7 +97,7 @@ sendRequest senderId SendListRequestReqBody{ recipientId, list } = do
         { senderId = senderId & SomeUserId . UserId
         , recipientId = recipientId & SomeUserId . UserId
         , list = list <&> \SendListRequestItemReqBody{..} -> ListImpl.Item
-          { price = SomeCurrency $ Kopecks price, ..}
+          { price = positiveRubKopecks price, ..}
         }
   ListImpl.sendRequest data' >>= \case
     Right req -> return [toResp req]

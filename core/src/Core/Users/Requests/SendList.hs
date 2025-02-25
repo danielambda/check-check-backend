@@ -20,7 +20,7 @@ import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((*>>))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime)
-import Core.Common.Domain.Currency (SomeCurrency)
+import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.UserId (SomeUserId)
 import Core.Users.MonadClasses.Repository (UsersRepository (userExistsInRepo))
 import Core.Users.Requests.Domain.Request (newRequest, Request, RequestItem (..), RequestItemIdentity (..))
@@ -36,7 +36,7 @@ data Data = Data
 data Item = Item
   { identity :: Text
   , quantity :: Positive Double
-  , price :: SomeCurrency
+  , price :: Positive RubKopecks
   }
 
 newtype Error = UserDoesNotExist SomeUserId

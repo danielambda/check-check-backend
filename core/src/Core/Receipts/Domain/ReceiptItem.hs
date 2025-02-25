@@ -14,11 +14,11 @@ import Optics
   )
 
 import SmartPrimitives.Positive (Positive, plus)
-import Core.Common.Domain.Currency (SomeCurrency)
+import Core.Common.Domain.RubKopecks (RubKopecks)
 
 data ReceiptItem = ReceiptItem
   { name :: Text
-  , price :: SomeCurrency
+  , price :: Positive RubKopecks
   , quantity :: Positive Double
   }
 

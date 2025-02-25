@@ -4,8 +4,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 module SmartPrimitives.Positive
   ( Positive, mkPositive, unPositive
+  , mkUnsafePositive
   , plus, mult
   , sumPositive
   , ceilingPositive
@@ -31,6 +34,9 @@ newtype Positive a = Positive a
 mkPositive :: (Num a, Ord a) => a -> Maybe (Positive a)
 mkPositive a | a > 0 = Just $ Positive a
              | otherwise = Nothing
+
+mkUnsafePositive :: (Num a, Ord a) => a -> Positive a
+mkUnsafePositive = Positive
 
 unPositive :: Positive a -> a
 unPositive (Positive a) = a

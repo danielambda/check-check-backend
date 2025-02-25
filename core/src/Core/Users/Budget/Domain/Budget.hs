@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Core.Users.Budget.Domain.Budget
   ( Budget(..), BudgetLowerBoundStatus(..)
@@ -20,25 +21,27 @@ import Optics
   )
 
 import SmartPrimitives.Positive (Positive)
+import Core.Common.Domain.RubKopecks (RubKopecks)
 
 data Budget = Budget
-  { amount :: Integer
-  , mLowerBound :: Maybe Integer
+  { amount :: RubKopecks
+  , mLowerBound :: Maybe RubKopecks
   }
 
 data BudgetLowerBoundStatus
   = BudgetLowerBoundExceeded
   | BudgetLowerBoundNotExceeded
 
-instance (k ~ A_Lens, a ~ Integer, a ~ b)
+instance (k ~ A_Lens, a ~ RubKopecks, a ~ b)
       => LabelOptic "amount" k Budget Budget a b where
   labelOptic = lensVL $ \f Budget{amount, ..} ->
     f amount <&> \amount' -> Budget{amount = amount', ..}
 
-instance (k ~ An_AffineTraversal, a ~ Integer, a ~ b)
+instance (k ~ An_AffineTraversal, a ~ RubKopecks, a ~ b)
       => LabelOptic "mLowerBound" k Budget Budget a b where
   labelOptic = atraversalVL $ \point f Budget{mLowerBound, ..} -> case mLowerBound of
-    Just lowerBound -> f lowerBound <&> \lowerBound' -> Budget{mLowerBound = Just lowerBound', ..}
+    Just lowerBound -> f lowerBound <&> \lowerBound' ->
+      Budget{mLowerBound = Just lowerBound', ..}
     Nothing -> point Budget{..}
 
 instance (k ~ A_Getter, a ~ BudgetLowerBoundStatus, a ~ b)
@@ -47,10 +50,10 @@ instance (k ~ A_Getter, a ~ BudgetLowerBoundStatus, a ~ b)
     Just lowerBound | budget ^. #amount < lowerBound -> BudgetLowerBoundExceeded
     _ -> BudgetLowerBoundNotExceeded
 
-addMoney :: Positive Integer -> Budget -> Budget
+addMoney :: Positive RubKopecks -> Budget -> Budget
 addMoney money budget = budget & #amount %~ (+ money ^. #value)
 
-spendMoney :: Positive Integer -> Budget -> (Budget, BudgetLowerBoundStatus)
+spendMoney :: Positive RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
 spendMoney money budget =
   let budget' = budget & #amount %~ subtract (money ^. #value)
   in (budget', budget' ^. #lowerBoundStatus)

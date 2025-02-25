@@ -6,6 +6,7 @@
 {-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module WebAPI.Receipts.Get
   ( Dependencies
@@ -16,12 +17,11 @@ module WebAPI.Receipts.Get
 import Servant (ServerT, Capture, (:>), JSON, Get, err404, ServerError)
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
-import Optics ((^.), toListOf, (<&>), (&))
+import Optics ((^.), toListOf, (<&>), (&), (%))
 
 import GHC.Generics (Generic)
 import Control.Monad.Error.Class (throwError, MonadError)
 
-import Core.Common.Operators ((^^.))
 import Core.Receipts.Domain.Receipt (Receipt, receiptItems)
 import Core.Receipts.Domain.ReceiptItem (ReceiptItem)
 import qualified Core.Receipts.Get as Impl (get, Dependencies)
@@ -56,7 +56,8 @@ toResp
   where
     itemToResp :: (Int, ReceiptItem) -> ReceiptItemResp
     itemToResp (index, item) = ReceiptItemResp
-      index
-      (item  ^. #name)
-      (item  ^. #quantity)
-      (item ^^. #price)
+      { index
+      , name = item  ^. #name
+      , quantity = item  ^. #quantity
+      , price = item ^. #price % #posValue
+      }

@@ -20,7 +20,7 @@ import Database.PostgreSQL.Simple (ToRow, Only (..), FromRow)
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
 import Database.PostgreSQL.Simple.ToField (ToField (toField), Action (Escape))
-import Optics ((%), (^..), folded, to)
+import Optics ((%), (^..), folded, to, (^.))
 import Data.UUID (UUID)
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -35,7 +35,7 @@ import qualified Data.List.NonEmpty as NonEmpty (append, singleton)
 
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
-import Core.Common.Domain.Currency (Currency(Kopecks), SomeCurrency(SomeCurrency))
+import Core.Common.Domain.RubKopecks (RubKopecks(..), positiveRubKopecks)
 import Core.Users.Domain.UserId (SomeUserId (SomeUserId), UserId (UserId))
 import Core.Users.Requests.Domain.RequestId (RequestId(RequestId))
 import Core.Users.Requests.MonadClasses.Repository (RequestsRepository(..))
@@ -111,8 +111,7 @@ toDb request@Request{ createdAt } =
       let (identityTag, identityContents) = case identity of
             TextIdentity t -> (TextRequestItemIdentity, t)
             ReceiptItemNameIdentity t -> (ReceiptItemNameTextRequestItemIdentity, t)
-      in DbRequestItem {price = item ^^. #price , ..}
-
+      in DbRequestItem {price = item ^. #price % #posValue, ..}
 toDomain :: DbRequest -> NonEmpty DbRequestItem -> SomeRequest
 toDomain DbRequest{..} dbRequestItems = SomeRequest $ Request
   { requestId = RequestId requestId
@@ -127,7 +126,7 @@ toDomain DbRequest{..} dbRequestItems = SomeRequest $ Request
       { identity = case identityTag of
         TextRequestItemIdentity -> TextIdentity identityContents
         ReceiptItemNameTextRequestItemIdentity -> ReceiptItemNameIdentity identityContents
-      , price = SomeCurrency $ Kopecks price
+      , price = positiveRubKopecks price
       , ..
       }
 

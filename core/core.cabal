@@ -10,7 +10,7 @@ build-type:     Simple
 
 library
   exposed-modules:
-      Core.Common.Domain.Currency
+      Core.Common.Domain.RubKopecks
       Core.Common.MonadClasses.MonadUUID
       Core.Common.MonadClasses.MonadUTCTime
       Core.Common.Operators
@@ -37,6 +37,7 @@ library
       Core.Users.Requests.SendReceiptItems
       Core.Users.Requests.GetIncoming
   other-modules:
+      Core.Users.Budget.AddMoney
       Paths_core
   hs-source-dirs:
       src

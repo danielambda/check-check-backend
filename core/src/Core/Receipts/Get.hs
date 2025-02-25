@@ -11,7 +11,7 @@ import Data.Text (Text)
 
 import SmartPrimitives.Positive (mkPositive)
 import Core.Common.Operators ((.>), (*>>))
-import Core.Common.Domain.Currency (SomeCurrency(SomeCurrency), Currency (Kopecks))
+import Core.Common.Domain.RubKopecks (RubKopecks(..))
 import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching(..), FetchedReceiptItem(..))
 import Core.Receipts.MonadClasses.Repository (ReceiptsRepository(..))
 import Core.Receipts.Domain.Receipt (Receipt, mkReceipt)
@@ -32,6 +32,6 @@ fetchedToDomain :: [FetchedReceiptItem] -> Maybe Receipt
 fetchedToDomain = mkReceipt . mapMaybe mapItem
   where
     mapItem FetchedReceiptItem{ name, price, quantity } = do
-      posPrice <- SomeCurrency . Kopecks <$> mkPositive price
+      posPrice <- mkPositive $ RubKopecks price
       posQuantity <- mkPositive quantity
       return $ ReceiptItem name posPrice posQuantity

@@ -30,7 +30,7 @@ import Core.Receipts.Domain.Receipt (Receipt, receiptItems, mkReceipt)
 import Core.Receipts.Domain.ReceiptItem (ReceiptItem(ReceiptItem))
 import Core.Receipts.MonadClasses.Repository (ReceiptsRepository (..))
 import Infrastructure.Common.Persistence (MonadConnReader, query, execute_, executeMany)
-import Core.Common.Domain.Currency (SomeCurrency(SomeCurrency), Currency (Kopecks))
+import Core.Common.Domain.RubKopecks (RubKopecks(..))
 
 newtype ReceiptsRepositoryT m a = ReceiptsRepositoryT
   { runReceiptsRepositoryT :: m a }
@@ -68,7 +68,7 @@ toDomain :: [DbReceiptItem] -> Maybe Receipt
 toDomain = mkReceipt . mapMaybe toDomain'
   where
     toDomain' DbReceiptItem{ name, price, quantity } = do
-      price' <- SomeCurrency . Kopecks <$> mkPositive price
+      price' <- mkPositive $ RubKopecks price
       quantity' <- mkPositive quantity
       return $ ReceiptItem name price' quantity'
 

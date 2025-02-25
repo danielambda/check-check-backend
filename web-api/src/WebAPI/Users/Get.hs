@@ -20,12 +20,12 @@ module WebAPI.Users.Get
 import Servant (ServerT, (:>), JSON, Get, Capture, throwError, err404, ServerError)
 import Data.Aeson (ToJSON)
 import Data.UUID (UUID)
-import Optics ((^.), (^?), (%), to, (<&>), (&))
+import Optics ((^?), (%), to, (<&>), (&))
 
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
-import Core.Common.Operators ((^^.))
+import Core.Common.Operators ((^^.), (^^?))
 import Core.Users.Budget.Domain.Budget (Budget)
 import Core.Users.Domain.UserType (UserType(Single))
 import Core.Users.Domain.User (User)
@@ -65,8 +65,8 @@ toResp' user = UserSingleResp
   } where  -- I know this syntax looks cursed. That's why I like it.
     budgetResp :: Budget -> BudgetResp
     budgetResp budget = BudgetResp
-      { amount = budget ^. #amount
-      , lowerBound = budget ^? #mLowerBound
+      { amount = budget ^^. #amount
+      , lowerBound = budget ^^? #mLowerBound
       }
 
 -- Загадка от Жака Фреско: Why GHC does not curse me even tho here is no type signature
@@ -74,7 +74,7 @@ toResp = UserSingleResp
   <$> (^^. #userId)
   <*> (^^. #data % #username)
   <*> (^? #data % #mBudget % to (BudgetResp
-    <$> (^. #amount)
-    <*> (^? #mLowerBound)
+    <$> (^^. #amount)
+    <*> (^^? #mLowerBound)
     )
   )

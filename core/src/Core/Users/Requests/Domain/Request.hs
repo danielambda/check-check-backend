@@ -26,7 +26,7 @@ import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Users.Domain.UserId (SomeUserId)
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus (Pending))
 import Core.Users.Requests.Domain.RequestId (RequestId, newRequestId)
-import Core.Common.Domain.Currency (SomeCurrency)
+import Core.Common.Domain.RubKopecks (RubKopecks)
 
 data Request (status :: RequestStatus) = Request
   { requestId :: RequestId status
@@ -39,7 +39,7 @@ data Request (status :: RequestStatus) = Request
 data RequestItem = RequestItem
   { identity :: RequestItemIdentity
   , quantity :: Positive Double
-  , price :: SomeCurrency
+  , price :: Positive RubKopecks
   }
 
 data RequestItemIdentity

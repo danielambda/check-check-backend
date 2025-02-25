@@ -12,20 +12,19 @@ module WebAPI.Users.IncomingRequests.Get
 
 import Servant (ServerT, JSON, Get)
 import Data.Aeson (ToJSON)
+import Optics ((^.), (&))
+import Data.UUID (UUID)
+import Data.Time (UTCTime)
+import Data.Text (Text)
 
+import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 
-import qualified Core.Users.Requests.GetIncoming as Impl (getIncoming, Dependencies)
-import Data.UUID (UUID)
-import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
-import Data.Time (UTCTime)
-import Data.List.NonEmpty (NonEmpty)
 import SmartPrimitives.Positive (Positive)
-import Data.Text (Text)
-import Core.Users.Requests.Domain.Request (SomeRequest (..), Request (..), RequestItem (..), RequestItemIdentity (..))
 import Core.Common.Operators ((^^.))
-import Optics ((^.), (&))
-import Core.Common.Domain.Currency (SomeCurrency(SomeCurrency), Currency (Kopecks))
+import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
+import Core.Users.Requests.Domain.Request (SomeRequest (..), Request (..), RequestItem (..), RequestItemIdentity (..))
+import qualified Core.Users.Requests.GetIncoming as Impl (getIncoming, Dependencies)
 
 type GetIncomingRequests =
   Get '[JSON] [RequestResp]
@@ -58,9 +57,10 @@ toResp (SomeRequest request@Request{..}) = RequestResp
   }
   where
     toResp' :: RequestItem -> RequestItemResp
-    toResp' RequestItem{ price = SomeCurrency (Kopecks price), ..} = RequestItemResp
+    toResp' RequestItem{..} = RequestItemResp
       { identity = identity & \case
         TextIdentity t -> t
         ReceiptItemNameIdentity t -> t
+      , price = price ^. #posValue
       , ..
       }

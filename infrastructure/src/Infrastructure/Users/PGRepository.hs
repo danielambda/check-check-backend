@@ -26,6 +26,7 @@ import Control.Monad.IO.Class (MonadIO)
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
+import Core.Common.Operators ((^^?))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Core.Users.Domain.User (User(..), UserData(..), SomeUser(SomeUser))
 import Core.Users.Domain.Primitives (Username(..))
@@ -34,6 +35,7 @@ import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Budget.Domain.Budget (Budget(Budget))
 import Infrastructure.Common.Persistence
   (MonadConnReader, execute, executeMany, withTransaction, query, queryMaybe, execute_)
+import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }
@@ -104,8 +106,8 @@ toDb user =
   let
     userId = user ^. #userId % #value
     username = user ^. #data % #username % #value
-    budgetAmount = user ^? #data % #mBudget % #amount
-    budgetLowerBound = user ^? #data % #mBudget % #mLowerBound
+    budgetAmount = user ^^? #data % #mBudget % #amount
+    budgetLowerBound = user ^^? #data % #mBudget % #mLowerBound
     ownerId = user ^? #mOwnerId % #value
     isGroup = case user of UserGroup{} -> True; _ -> False
     otherUserIdRelations = OtherUserIdRelation userId <$> user ^.. #otherUserIds % #value
@@ -116,7 +118,7 @@ toDomainSingle DbUser{..} = UserSingle
   { userSingleId = UserId userId
   , userSingleData = UserData
     { username = Username username
-    , mBudget = Budget <$> budgetAmount <*> pure budgetLowerBound
+    , mBudget = Budget . RubKopecks <$> budgetAmount <*> pure (RubKopecks <$> budgetLowerBound)
     }
   }
 
@@ -127,7 +129,7 @@ toDomainGroup DbUser{..} otherUserIds = UserGroup
   , otherUserIds = UserId . userSingleId <$> otherUserIds
   , userGroupData = UserData
     { username = Username username
-    , mBudget = Budget <$> budgetAmount <*> pure budgetLowerBound
+    , mBudget = Budget . RubKopecks <$> budgetAmount <*> pure (RubKopecks <$> budgetLowerBound)
     }
   }
 
