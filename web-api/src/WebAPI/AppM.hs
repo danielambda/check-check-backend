@@ -54,6 +54,7 @@ instance UsersRepository AppM where
   getUserSingleFromRepo = runUsersRepositoryT . getUserSingleFromRepo
   getUserGroupFromRepo = runUsersRepositoryT . getUserGroupFromRepo
   userExistsInRepo = runUsersRepositoryT . userExistsInRepo
+  tryApplyBudgetDeltaToUserInRepo = (runUsersRepositoryT .) . tryApplyBudgetDeltaToUserInRepo
 
 instance RequestsRepository AppM where
   addRequestToRepo = runRequestsRepositoryT . addRequestToRepo
