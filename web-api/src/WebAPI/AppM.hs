@@ -53,8 +53,10 @@ instance UsersRepository AppM where
   addUserToRepo = runUsersRepositoryT . addUserToRepo
   getUserSingleFromRepo = runUsersRepositoryT . getUserSingleFromRepo
   getUserGroupFromRepo = runUsersRepositoryT . getUserGroupFromRepo
+  getSomeUserFromRepo = runUsersRepositoryT . getSomeUserFromRepo
   userExistsInRepo = runUsersRepositoryT . userExistsInRepo
   tryApplyBudgetDeltaToUserInRepo = (runUsersRepositoryT .) . tryApplyBudgetDeltaToUserInRepo
+  trySetUserBudgetAmountInRepo = (runUsersRepositoryT .) . trySetUserBudgetAmountInRepo
 
 instance RequestsRepository AppM where
   addRequestToRepo = runRequestsRepositoryT . addRequestToRepo

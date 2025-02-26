@@ -11,6 +11,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 module Core.Users.Domain.User
   ( User(..), SomeUser(..)
@@ -22,7 +23,7 @@ import Optics
   ( LabelOptic, labelOptic
   , An_AffineTraversal, atraversalVL
   , A_Lens, lensVL
-  , (<&>), makeFieldLabelsFor, A_Traversal, traversalVL
+  , (<&>), makeFieldLabelsFor, A_Traversal, traversalVL, (^.), (.~), (&)
   )
 
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
@@ -92,3 +93,7 @@ instance (k ~ A_Traversal, a ~ UserId 'Single, a ~ b) => LabelOptic "otherUserId
   labelOptic = traversalVL $ \f user -> case user of
     UserSingle{..} -> pure UserSingle{..}
     UserGroup{otherUserIds, ..} -> traverse f otherUserIds <&> \o -> UserGroup{otherUserIds = o, ..}
+
+instance (k ~ A_Lens, a ~ UserData, a ~ b) => LabelOptic "data" k SomeUser SomeUser a b where
+  labelOptic = lensVL $ \f (SomeUser user) ->
+    f (user ^. #data) <&> \data' -> SomeUser $ user & #data .~ data'

@@ -12,6 +12,7 @@ module SmartPrimitives.Positive
   , plus, mult
   , sumPositive
   , ceilingPositive
+  , negateNeg
   ) where
 
 import Servant (FromHttpApiData (parseUrlPiece))
@@ -27,6 +28,7 @@ import Data.String (IsString)
 
 import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 import Data.List.NonEmpty (NonEmpty)
+import SmartPrimitives.Negative (Negative, unNegative)
 
 newtype Positive a = Positive a
   deriving (Eq, Ord, Show, ToJSON, ToField)
@@ -57,6 +59,9 @@ sumPositive = Positive . sum . fmap unPositive
 
 ceilingPositive :: Positive Double -> Positive Integer
 ceilingPositive = Positive . ceiling . unPositive
+
+negateNeg :: Num a => Negative a -> Positive a
+negateNeg = Positive . negate . unNegative
 
 parseErrorMsg :: IsString s => s
 parseErrorMsg = "value has to be positive"

@@ -45,8 +45,10 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   addUserToRepo = addUserToDb
   getUserSingleFromRepo = getUserSingleFromDb
   getUserGroupFromRepo = getUserGroupFromDb
+  getSomeUserFromRepo = getSomeUserFromDb
   userExistsInRepo = userExistsInDb
   tryApplyBudgetDeltaToUserInRepo = tryApplyBudgetDeltaToUserInDb
+  trySetUserBudgetAmountInRepo = trySetUserBudgetAmountInDb
 
 addUserToDb :: (MonadIO m, MonadConnReader m)
             => User t -> m ()
@@ -110,6 +112,15 @@ tryApplyBudgetDeltaToUserInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) 
     SET budgetAmount = budgetAmount + ?
     WHERE userId = ? AND budgetAmount IS NOT NULL
     RETURNING budgetAmount
+  |] (kopecks, userId)
+
+trySetUserBudgetAmountInDb :: (MonadIO m, MonadConnReader m)
+                           => SomeUserId -> RubKopecks -> m Bool
+trySetUserBudgetAmountInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) =
+  (0 <) <$> execute [sql|
+    UPDATE users
+    SET budgetAmount = ?
+    WHERE userId = ? AND budgetAmount IS NOT NULL
   |] (kopecks, userId)
 
 toDb :: User t -> (DbUser, [OtherUserIdRelation])

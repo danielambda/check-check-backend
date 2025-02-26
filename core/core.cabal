@@ -30,6 +30,7 @@ library
       Core.Users.Budget.Domain.Budget
       Core.Users.Budget.Create
       Core.Users.Budget.AddMoney
+      Core.Users.Budget.SpendMoney
       Core.Users.Requests.Domain.Request
       Core.Users.Requests.Domain.RequestId
       Core.Users.Requests.Domain.RequestStatus
