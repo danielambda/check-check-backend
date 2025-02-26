@@ -6,7 +6,7 @@ module WebAPI.Users.IncomingRequests (Dependencies, IncomingRequestsAPI, incomin
 import Servant (ServerT)
 import Data.UUID (UUID)
 
-import WebAPI.Users.IncomingRequests.Get (getIncomingRequests, GetIncomingRequests, Dependencies)
+import WebAPI.Users.IncomingRequests.GetMany (getIncomingRequests, GetIncomingRequests, Dependencies)
 
 type IncomingRequestsAPI = GetIncomingRequests
 

@@ -22,9 +22,9 @@ import GHC.Generics (Generic)
 
 import Core.Common.Domain.RubKopecks (RubKopecks (..))
 import Core.Users.Domain.UserId (UserId(..), SomeUserId (..))
+import Core.Users.Budget.Domain.Budget (BudgetLowerBoundStatus(BudgetLowerBoundExceeded))
 import qualified Core.Users.Budget.ApplyDelta as Impl
   (Dependencies, applyBudgetDeltaToUser, Error(..))
-import Core.Users.Budget.Domain.Budget (BudgetLowerBoundStatus(BudgetLowerBoundExceeded))
 
 type ApplyBudgetDeltaToUser =
   ReqBody '[JSON] Integer :> Put '[JSON] ApplyBudgetDeltaToUserResp

@@ -84,6 +84,7 @@ data RequestResp = RequestResp
   , senderId :: UUID
   , recipientId :: UUID
   , createdAt :: UTCTime
+  , isPending :: Bool
   } deriving (Generic, ToJSON)
 
 type Dependencies m =
@@ -103,6 +104,7 @@ sendRequest senderId SendListRequestReqBody{ recipientId, list } = do
     Right req -> return [toResp req]
     Left (ListImpl.UserDoesNotExist (SomeUserId (UserId uuid))) ->
       throwError err404{ errBody = toLazyASCIIBytes uuid }
+
 sendRequest senderId SendReceiptItemsRequestReqBody{ receiptQr, indexSelections } = do
   let data' = ReceiptItemsImpl.Data
         { senderId = senderId & SomeUserId . UserId
@@ -125,5 +127,6 @@ toResp Request{..} = RequestResp
   { requestId = requestId ^. #value
   , senderId = senderId ^. #value
   , recipientId = recipientId ^. #value
+  , isPending = True
   , ..
   }

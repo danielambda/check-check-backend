@@ -9,6 +9,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Infrastructure.Users.Requests.PGRepository
   ( RequestsRepositoryT(..)
@@ -35,7 +36,7 @@ import qualified Data.List.NonEmpty as NonEmpty (append, singleton)
 
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
-import Core.Common.Domain.RubKopecks (RubKopecks(..), positiveRubKopecks)
+import Core.Common.Domain.RubKopecks (positiveRubKopecks)
 import Core.Users.Domain.UserId (SomeUserId (SomeUserId), UserId (UserId))
 import Core.Users.Requests.Domain.RequestId (RequestId(RequestId))
 import Core.Users.Requests.MonadClasses.Repository (RequestsRepository(..))
@@ -46,6 +47,7 @@ import Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
   (ByteStringParsableEnum, mkEnumFieldParser)
 import Infrastructure.Common.Persistence
   (MonadConnReader, execute, executeMany, withTransaction, query, execute_)
+import Data.Data (Typeable)
 
 newtype RequestsRepositoryT m a = RequestsRepositoryT
   { runRequestsRepositoryT :: m a }
@@ -97,13 +99,13 @@ getIncomingRequestsFromDb (SomeUserId(UserId recipientId)) =
                      )
           = (requestId, (DbRequest{..}, NonEmpty.singleton DbRequestItem{..}))
 
-toDb :: Request 'Pending -> (DbRequest, [DbRequestItem])
+toDb :: Typeable status => Request status -> (DbRequest, [DbRequestItem])
 toDb request@Request{ createdAt } =
   let
     requestId = request ^^. #requestId
     senderId = request ^^. #senderId
     recipientId = request ^^. #recipientId
-    isPending = True
+    isPending = request ^. #status == Pending
     requestItems = request ^.. #items % folded % to (dbRequestItem requestId)
   in (DbRequest{..}, requestItems)
   where
@@ -112,15 +114,20 @@ toDb request@Request{ createdAt } =
             TextIdentity t -> (TextRequestItemIdentity, t)
             ReceiptItemNameIdentity t -> (ReceiptItemNameTextRequestItemIdentity, t)
       in DbRequestItem {price = item ^. #price % #posValue, ..}
+
 toDomain :: DbRequest -> NonEmpty DbRequestItem -> SomeRequest
-toDomain DbRequest{..} dbRequestItems = SomeRequest $ Request
-  { requestId = RequestId requestId
-  , senderId    = SomeUserId $ UserId senderId
-  , recipientId = SomeUserId $ UserId recipientId
-  , items = toDomain' <$> dbRequestItems
-  , ..
-  }
+toDomain DbRequest{..} dbRequestItems
+  | isPending = SomeRequest $ request @'Pending
+  | otherwise = SomeRequest $ request @'Done
   where
+    request :: Request status
+    request = Request
+      { requestId = RequestId requestId
+      , senderId    = SomeUserId $ UserId senderId
+      , recipientId = SomeUserId $ UserId recipientId
+      , items = toDomain' <$> dbRequestItems
+      , ..
+      }
     toDomain' :: DbRequestItem -> RequestItem
     toDomain' DbRequestItem { identityTag, identityContents, quantity, price } = RequestItem
       { identity = case identityTag of
@@ -132,7 +139,7 @@ toDomain DbRequest{..} dbRequestItems = SomeRequest $ Request
 
 data DbRequest = DbRequest
   { requestId :: UUID
-  , senderId :: UUID
+  , senderId    :: UUID
   , recipientId :: UUID
   , createdAt :: UTCTime
   , isPending :: Bool
@@ -142,7 +149,7 @@ createRequestsTable :: (MonadIO m, MonadConnReader m) => m ()
 createRequestsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS requests
   ( requestId UUID PRIMARY KEY NOT NULL
-  , senderId UUID NOT NULL REFERENCES users(userId)
+  , senderId    UUID NOT NULL REFERENCES users(userId)
   , recipientId UUID NOT NULL REFERENCES users(userId)
   , createdAt TIMESTAMPTZ NOT NULL
   , isPending BOOL NOT NULL

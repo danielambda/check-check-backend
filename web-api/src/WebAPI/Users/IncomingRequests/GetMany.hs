@@ -5,10 +5,12 @@
 {-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE KindSignatures #-}
 
-module WebAPI.Users.IncomingRequests.Get
+module WebAPI.Users.IncomingRequests.GetMany
   ( Impl.Dependencies
-  , GetIncomingRequests, getIncomingRequests) where
+  , GetIncomingRequests, getIncomingRequests
+  ) where
 
 import Servant (ServerT, JSON, Get)
 import Data.Aeson (ToJSON)
@@ -23,6 +25,7 @@ import GHC.Generics (Generic)
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
 import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
+import Core.Users.Requests.Domain.RequestStatus (RequestStatus(Pending))
 import Core.Users.Requests.Domain.Request (SomeRequest (..), Request (..), RequestItem (..), RequestItemIdentity (..))
 import qualified Core.Users.Requests.GetIncoming as Impl (getIncoming, Dependencies)
 
@@ -35,6 +38,7 @@ data RequestResp = RequestResp
   , recipientId :: UUID
   , items :: NonEmpty RequestItemResp
   , createdAt :: UTCTime
+  , isPending :: Bool
   } deriving (Generic, ToJSON)
 
 data RequestItemResp = RequestItemResp
@@ -53,6 +57,7 @@ toResp (SomeRequest request@Request{..}) = RequestResp
   , senderId = request ^^. #senderId
   , recipientId = request ^^. #recipientId
   , items = toResp' <$> items
+  , isPending = request ^. #status == Pending
   , ..
   }
   where
