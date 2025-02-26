@@ -10,7 +10,7 @@
 
 module Core.Users.Budget.Domain.Budget
   ( Budget(..), BudgetLowerBoundStatus(..)
-  , addMoney, spendMoney
+  , applyDelta
   ) where
 
 import Optics
@@ -20,7 +20,6 @@ import Optics
   , An_AffineTraversal, atraversalVL, A_Lens, lensVL,
   )
 
-import SmartPrimitives.Positive (Positive)
 import Core.Common.Domain.RubKopecks (RubKopecks)
 
 data Budget = Budget
@@ -51,10 +50,7 @@ instance (k ~ A_Getter, a ~ BudgetLowerBoundStatus, a ~ b)
     Just lowerBound | budget ^. #amount < lowerBound -> BudgetLowerBoundExceeded
     _ -> BudgetLowerBoundNotExceeded
 
-addMoney :: Positive RubKopecks -> Budget -> Budget
-addMoney money budget = budget & #amount %~ (+ money ^. #value)
-
-spendMoney :: Positive RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
-spendMoney money budget =
-  let budget' = budget & #amount %~ subtract (money ^. #value)
+applyDelta :: RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
+applyDelta delta budget =
+  let budget' = budget & #amount %~ (+ delta)
   in (budget', budget' ^. #lowerBoundStatus)
