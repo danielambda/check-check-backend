@@ -1,0 +1,20 @@
+### Get John Doe for viewing
+GET localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a
+
+### Apply 0 delta to John Doe budget
+PUT localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
+Content-Type: application/json
+
+0
+
+### Add 100 rubles to John Doe budget
+PUT localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
+Content-Type: application/json
+
+10000
+
+### Take 100 rubles from John Doe budget
+PUT localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
+Content-Type: application/json
+
+-10000

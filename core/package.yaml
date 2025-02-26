@@ -25,6 +25,7 @@ library:
 
     - Core.Users.Budget.Domain.Budget
     - Core.Users.Budget.Create
+    - Core.Users.Budget.AddMoney
 
     - Core.Users.Requests.Domain.Request
     - Core.Users.Requests.Domain.RequestId

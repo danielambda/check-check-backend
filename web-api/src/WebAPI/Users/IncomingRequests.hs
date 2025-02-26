@@ -1,7 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module WebAPI.Users.IncomingRequests (IncomingRequestsAPI, incomingRequestsServer) where
+module WebAPI.Users.IncomingRequests (Dependencies, IncomingRequestsAPI, incomingRequestsServer) where
 
 import Servant (ServerT)
 import Data.UUID (UUID)

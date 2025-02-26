@@ -11,12 +11,14 @@ build-type:     Simple
 library
   exposed-modules:
       SmartPrimitives.Positive
+      SmartPrimitives.Utils
       SmartPrimitives.NonNegative
       SmartPrimitives.TextLenRange
       SmartPrimitives.TextMaxLen
       SmartPrimitives.TextMinLen
   other-modules:
       SmartPrimitives.Internal
+      SmartPrimitives.Negative
       Paths_smart_primitives
   hs-source-dirs:
       src

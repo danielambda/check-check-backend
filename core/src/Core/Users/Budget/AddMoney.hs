@@ -6,22 +6,20 @@ import SmartPrimitives.Positive (Positive, unPositive)
 import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.UserId (SomeUserId)
 import Core.Users.MonadClasses.Repository (UsersRepository (userExistsInRepo, tryApplyBudgetDeltaToUserInRepo))
+import Data.Functor ((<&>))
 
 data Error
   = UserDoesNotExist SomeUserId
   | UserDoesNotHaveBudget SomeUserId
 
 type Dependencies m = UsersRepository m
-addMoneyToBudget :: Dependencies m => SomeUserId -> Positive RubKopecks -> m (Maybe Error)
+addMoneyToBudget :: Dependencies m => SomeUserId -> Positive RubKopecks -> m (Either Error RubKopecks )
 addMoneyToBudget userId posKopecks = do
   userExists <- userExistsInRepo userId
   if not userExists then
-    return $ Just $ UserDoesNotExist userId
-  else do
+    return $ Left $ UserDoesNotExist userId
+  else
     let kopecks = unPositive posKopecks
-    hasAddedMoney <- tryApplyBudgetDeltaToUserInRepo userId kopecks
-    if hasAddedMoney then
-      return Nothing
-    else
-      return $ Just $ UserDoesNotHaveBudget userId
+    in tryApplyBudgetDeltaToUserInRepo userId kopecks <&>
+      maybe (Left $ UserDoesNotHaveBudget userId) Right
 

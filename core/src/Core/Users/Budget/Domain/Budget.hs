@@ -9,7 +9,7 @@
 {-# LANGUAGE KindSignatures #-}
 
 module Core.Users.Budget.Domain.Budget
-  ( Budget(..), BudgetLowerBoundStatus(..)
+  ( Budget(..)
   , addMoney, spendMoney
   ) where
 
@@ -28,10 +28,6 @@ data Budget = Budget
   , mLowerBound :: Maybe RubKopecks
   }
 
-data BudgetLowerBoundStatus
-  = BudgetLowerBoundExceeded
-  | BudgetLowerBoundNotExceeded
-
 instance (k ~ A_Lens, a ~ RubKopecks, a ~ b)
       => LabelOptic "amount" k Budget Budget a b where
   labelOptic = lensVL $ \f Budget{amount, ..} ->
@@ -44,16 +40,15 @@ instance (k ~ An_AffineTraversal, a ~ RubKopecks, a ~ b)
       Budget{mLowerBound = Just lowerBound', ..}
     Nothing -> point Budget{..}
 
-instance (k ~ A_Getter, a ~ BudgetLowerBoundStatus, a ~ b)
-      => LabelOptic "lowerBoundStatus" k Budget Budget a b where
-  labelOptic = to $ \budget -> case budget ^? #mLowerBound of
-    Just lowerBound | budget ^. #amount < lowerBound -> BudgetLowerBoundExceeded
-    _ -> BudgetLowerBoundNotExceeded
+instance (k ~ A_Getter, a ~ Bool, a ~ b)
+      => LabelOptic "lowerBoundExceeded" k Budget Budget a b where
+  labelOptic = to $ \budget ->
+    budget ^? #mLowerBound & maybe False (> budget ^. #amount)
 
 addMoney :: Positive RubKopecks -> Budget -> Budget
 addMoney money budget = budget & #amount %~ (+ money ^. #value)
 
-spendMoney :: Positive RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
+spendMoney :: Positive RubKopecks -> Budget -> (Budget, Bool)
 spendMoney money budget =
   let budget' = budget & #amount %~ subtract (money ^. #value)
-  in (budget', budget' ^. #lowerBoundStatus)
+  in (budget', budget' ^. #lowerBoundExceeded)

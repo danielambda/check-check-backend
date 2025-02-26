@@ -14,5 +14,5 @@ class Monad m => UsersRepository m where
   getUserSingleFromRepo :: UserId 'Single -> m (Maybe (User 'Single))
   getUserGroupFromRepo :: UserId 'Group -> m (Maybe (User 'Group))
   userExistsInRepo :: SomeUserId -> m Bool
-  tryApplyBudgetDeltaToUserInRepo :: SomeUserId -> RubKopecks -> m Bool
+  tryApplyBudgetDeltaToUserInRepo :: SomeUserId -> RubKopecks -> m (Maybe RubKopecks)
 

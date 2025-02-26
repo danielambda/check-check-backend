@@ -103,12 +103,13 @@ userExistsInDb (SomeUserId (UserId userId)) =
   |] (Only userId)
 
 tryApplyBudgetDeltaToUserInDb :: (MonadIO m, MonadConnReader m)
-                              => SomeUserId -> RubKopecks -> m Bool
+                              => SomeUserId -> RubKopecks -> m (Maybe RubKopecks)
 tryApplyBudgetDeltaToUserInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) =
-  (0 <) <$> execute [sql|
+  fmap (RubKopecks . fromOnly) <$> queryMaybe [sql|
     UPDATE users
     SET budgetAmount = budgetAmount + ?
     WHERE userId = ? AND budgetAmount IS NOT NULL
+    RETURNING budgetAmount
   |] (kopecks, userId)
 
 toDb :: User t -> (DbUser, [OtherUserIdRelation])
