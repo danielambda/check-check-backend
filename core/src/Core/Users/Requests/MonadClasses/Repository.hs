@@ -10,6 +10,6 @@ import Core.Users.Requests.Domain.RequestId (SomeRequestId)
 class Monad m => RequestsRepository m where
   addRequestToRepo :: Request 'Pending -> m ()
   getIncomingRequestsFromRepo :: SomeUserId -> m [SomeRequest]
-  getIncomingRequestFromRepo :: SomeUserId -> SomeRequestId -> m (Maybe SomeRequest)
+  getRequestFromRepo :: SomeRequestId -> m (Maybe SomeRequest)
   markRequestCompletedInRepo :: Request 'Completed -> m ()
 

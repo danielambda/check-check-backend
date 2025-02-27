@@ -30,15 +30,16 @@ import qualified Data.HashMap.Strict as HashMap (elems, fromListWith)
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO)
 import GHC.Generics (Generic)
+import Data.Data (Typeable)
 import Data.String (IsString(fromString))
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty (append, singleton)
 
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
 import Core.Common.Domain.RubKopecks (positiveRubKopecks)
 import Core.Users.Domain.UserId (SomeUserId (SomeUserId), UserId (UserId))
-import Core.Users.Requests.Domain.RequestId (RequestId(RequestId))
+import Core.Users.Requests.Domain.RequestId (RequestId(RequestId), SomeRequestId (SomeRequestId))
 import Core.Users.Requests.MonadClasses.Repository (RequestsRepository(..))
 import Core.Users.Requests.Domain.Request
   (Request(..), RequestItem(..), RequestItemIdentity(..), SomeRequest (SomeRequest))
@@ -46,8 +47,7 @@ import Core.Users.Requests.Domain.RequestStatus (RequestStatus(..))
 import Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
   (ByteStringParsableEnum, mkEnumFieldParser)
 import Infrastructure.Common.Persistence
-  (MonadConnReader, execute, executeMany, withTransaction, query, execute_)
-import Data.Data (Typeable)
+  (MonadConnReader, execute, executeMany, withTransaction, query, execute_, queryMaybe)
 
 newtype RequestsRepositoryT m a = RequestsRepositoryT
   { runRequestsRepositoryT :: m a }
@@ -56,6 +56,8 @@ newtype RequestsRepositoryT m a = RequestsRepositoryT
 instance (MonadIO m, MonadConnReader m) => RequestsRepository (RequestsRepositoryT m) where
   addRequestToRepo = addRequestToDb
   getIncomingRequestsFromRepo = getIncomingRequestsFromDb
+  getRequestFromRepo = getRequestFromDb
+  markRequestCompletedInRepo = markRequestCompletedInDb
 
 addRequestToDb :: (MonadIO m, MonadConnReader m) => Request 'Pending -> m ()
 addRequestToDb request =
@@ -84,8 +86,7 @@ getIncomingRequestsFromDb (SomeUserId(UserId recipientId)) =
     normalize :: [( UUID, UUID, UTCTime, Bool
                         , DbRequestItemIdentityTag, Text
                         , Positive Double, Positive Integer
-                  )]
-              -> [(DbRequest, NonEmpty DbRequestItem)]
+                  )] -> [(DbRequest, NonEmpty DbRequestItem)]
     normalize
       = HashMap.elems
       . HashMap.fromListWith merge
@@ -94,10 +95,30 @@ getIncomingRequestsFromDb (SomeUserId(UserId recipientId)) =
         merge (request, items1) (_, items2) =
           (request, NonEmpty.append items1 items2)
         processTuple ( requestId, senderId, createdAt, isPending
-                     , identityTag, identityContents
-                     , quantity, price
-                     )
-          = (requestId, (DbRequest{..}, NonEmpty.singleton DbRequestItem{..}))
+                                , identityTag, identityContents
+                                , quantity, price
+                     ) = (requestId, (DbRequest{..}, NonEmpty.singleton DbRequestItem{..}))
+
+getRequestFromDb :: (MonadIO m, MonadConnReader m)
+                 => SomeRequestId -> m (Maybe SomeRequest)
+getRequestFromDb (SomeRequestId(RequestId requestId)) = do
+  dbRequest <- queryMaybe [sql|
+    SELECT requestId, senderId, createdAt, isPending
+    FROM requests WHERE requestId = ?
+  |] (Only requestId)
+  dbRequestItems <- query [sql|
+    SELECT requestId, identityTag, identityContents, quantity, price
+    FROM requestItems WHERE requestId = ?
+  |] (Only requestId)
+  return $ toDomain <$> dbRequest <*> nonEmpty dbRequestItems
+
+markRequestCompletedInDb :: (MonadIO m, MonadConnReader m)
+                         => Request 'Completed -> m ()
+markRequestCompletedInDb Request{requestId = RequestId requestId} =
+  void $ execute [sql|
+    UPDATE requests SET isPending = FALSE
+    WHERE requestId = ?
+  |] (Only requestId)
 
 toDb :: Typeable status => Request status -> (DbRequest, [DbRequestItem])
 toDb request@Request{ createdAt } =

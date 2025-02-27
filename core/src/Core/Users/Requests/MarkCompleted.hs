@@ -18,7 +18,7 @@ import Data.Typeable (eqT, (:~:)(..))
 import Core.Users.Domain.UserId (SomeUserId)
 import Core.Users.MonadClasses.Repository (UsersRepository (userExistsInRepo))
 import Core.Users.Requests.MonadClasses.Repository
-  (RequestsRepository (getIncomingRequestFromRepo, markRequestCompletedInRepo))
+  (RequestsRepository (getRequestFromRepo, markRequestCompletedInRepo))
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus(..))
 import Core.Users.Requests.Domain.RequestId (RequestId, SomeRequestId (SomeRequestId))
 import Core.Users.Requests.Domain.Request (SomeRequest(SomeRequest), markCompleted, Request)
@@ -40,7 +40,7 @@ markRequestCompleted Data{ recipientId, requestId } = do
   if not recipientExists then
     return $ Left $ UserDoesNotExist recipientId
   else
-    getIncomingRequestFromRepo recipientId (SomeRequestId requestId) >>= \case
+    getRequestFromRepo (SomeRequestId requestId) >>= \case
       Nothing -> return $ Left $ RequestDoesNotExist requestId
       Just (SomeRequest (request :: Request status)) -> case eqT @status @'Pending of
         Nothing -> return $ Left $ RequestIsNotPending requestId

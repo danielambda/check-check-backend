@@ -61,3 +61,5 @@ instance UsersRepository AppM where
 instance RequestsRepository AppM where
   addRequestToRepo = runRequestsRepositoryT . addRequestToRepo
   getIncomingRequestsFromRepo = runRequestsRepositoryT . getIncomingRequestsFromRepo
+  getRequestFromRepo = runRequestsRepositoryT . getRequestFromRepo
+  markRequestCompletedInRepo = runRequestsRepositoryT . markRequestCompletedInRepo
