@@ -118,7 +118,7 @@ toDb request@Request{ createdAt } =
 toDomain :: DbRequest -> NonEmpty DbRequestItem -> SomeRequest
 toDomain DbRequest{..} dbRequestItems
   | isPending = SomeRequest $ request @'Pending
-  | otherwise = SomeRequest $ request @'Done
+  | otherwise = SomeRequest $ request @'Completed
   where
     request :: Request status
     request = Request

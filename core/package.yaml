@@ -34,6 +34,8 @@ library:
     - Core.Users.Requests.SendList
     - Core.Users.Requests.SendReceiptItems
     - Core.Users.Requests.GetIncoming
+    - Core.Users.Requests.MarkCompleted
+    - Core.Users.Requests.PayFor
 
   dependencies:
   - smart-primitives

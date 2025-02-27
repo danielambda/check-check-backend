@@ -11,15 +11,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Core.Users.Requests.Domain.Request
-  ( Request(..), newRequest
+  ( Request(..)
   , RequestItem(..), RequestItemIdentity(..)
   , SomeRequest(..)
+  , newRequest, markCompleted
   ) where
 
 import Optics (makeFieldLabelsNoPrefix, LabelOptic (labelOptic), A_Getter, to)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable ((:~:)(Refl), eqT, Typeable)
 
@@ -56,8 +58,8 @@ instance (Typeable (s :: RequestStatus), a ~ RequestStatus, a ~ b)
       => LabelOptic "status" A_Getter (Request s) (Request s) a b where
   labelOptic = to $ \_ -> case eqT @s @'Pending of
     Just Refl -> Pending
-    Nothing -> case eqT @s @'Done of
-      Just Refl -> Done
+    Nothing -> case eqT @s @'Completed of
+      Just Refl -> Completed
       Nothing -> error "unreachable"
 
 newRequest :: (MonadUUID m, MonadUTCTime m)
@@ -66,6 +68,10 @@ newRequest senderId recipientId items = do
   requestId <- newRequestId
   createdAt <- currentTime
   return Request{..}
+
+-- TODO introduce complete gadt with completion data like UTCTime and completion action
+markCompleted :: Request 'Pending -> Request 'Completed
+markCompleted = coerce
 
 data SomeRequest where
   SomeRequest :: Typeable status => Request status -> SomeRequest
