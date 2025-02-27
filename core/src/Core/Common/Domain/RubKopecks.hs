@@ -5,13 +5,15 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
+{-# OPTIONS_GHC -Wno-identities #-}
+
 module Core.Common.Domain.RubKopecks (RubKopecks(..), positiveRubKopecks) where
 
 import Optics (LabelOptic (labelOptic), A_Getter, to)
 import SmartPrimitives.Positive (Positive, unPositive, mkUnsafePositive)
 
 newtype RubKopecks = RubKopecks { value :: Integer }
-  deriving (Eq, Ord, Num)
+  deriving (Eq, Ord, Num, Real, Enum, Integral)
 
 positiveRubKopecks :: Positive Integer -> Positive RubKopecks
 positiveRubKopecks = mkUnsafePositive . RubKopecks . unPositive

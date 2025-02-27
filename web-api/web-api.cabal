@@ -21,6 +21,7 @@ executable web-api
       WebAPI.Users.CreateSingle
       WebAPI.Users.Get
       WebAPI.Users.IncomingRequests
+      WebAPI.Users.IncomingRequests.Complete
       WebAPI.Users.IncomingRequests.GetMany
       WebAPI.Users.OutgoingRequests
       WebAPI.Users.OutgoingRequests.Send

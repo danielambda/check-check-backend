@@ -103,7 +103,7 @@ getRequestFromDb :: (MonadIO m, MonadConnReader m)
                  => SomeRequestId -> m (Maybe SomeRequest)
 getRequestFromDb (SomeRequestId(RequestId requestId)) = do
   dbRequest <- queryMaybe [sql|
-    SELECT requestId, senderId, createdAt, isPending
+    SELECT requestId, senderId, recipientId, createdAt, isPending
     FROM requests WHERE requestId = ?
   |] (Only requestId)
   dbRequestItems <- query [sql|

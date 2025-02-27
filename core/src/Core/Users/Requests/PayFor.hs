@@ -43,16 +43,14 @@ payForRequest :: Dependencies m => Data -> m (Either Error (Budget, BudgetLowerB
 payForRequest Data{ recipientId, requestId } =
   getSomeUserFromRepo recipientId >>= \case
     Nothing -> return $ Left $ UserDoesNotExist recipientId
-    Just recipient ->
-      getRequestFromRepo (SomeRequestId requestId) >>= \case
-        Nothing -> return $ Left $ RequestDoesNotExist requestId
-        Just (SomeRequest (request :: Request status)) -> case eqT @status @'Pending of
-          Nothing -> return $ Left $ RequestIsNotPending requestId
-          Just Refl -> do
-            case recipient ^? #data % #mBudget of
-              Nothing -> return $ Left $ UserDoesNotHaveBudget recipientId
-              Just budget -> do
-                let (paidRequest, budget', budgetLBStatus) = payFor request budget
-                markRequestCompletedInRepo paidRequest
-                return $ Right (budget', budgetLBStatus)
+    Just recipient -> getRequestFromRepo (SomeRequestId requestId) >>= \case
+      Nothing -> return $ Left $ RequestDoesNotExist requestId
+      Just (SomeRequest (request :: Request status)) -> case eqT @status @'Pending of
+        Nothing -> return $ Left $ RequestIsNotPending requestId
+        Just Refl -> case recipient ^? #data % #mBudget of
+          Nothing -> return $ Left $ UserDoesNotHaveBudget recipientId
+          Just budget -> do
+            let (paidRequest, budget', budgetLBStatus) = payFor request budget
+            markRequestCompletedInRepo paidRequest
+            return $ Right (budget', budgetLBStatus)
 

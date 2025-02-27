@@ -48,3 +48,4 @@ markRequestCompleted Data{ recipientId, requestId } = do
           let completedRequest = markCompleted request
           markRequestCompletedInRepo completedRequest
           return $ Right ()
+

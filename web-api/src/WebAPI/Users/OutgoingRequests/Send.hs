@@ -20,11 +20,11 @@ module WebAPI.Users.OutgoingRequests.Send
   , SendRequest, sendRequest
   ) where
 
-import Servant (ServerT, (:>), JSON, Post, ReqBody, throwError, err404, ServerError, errBody, err401)
+import Servant (ServerT, (:>), JSON, Post, ReqBody, throwError, err404, ServerError, errBody, err400)
 import Data.Aeson
-  ( FromJSON (parseJSON), ToJSON (toJSON)
-  , genericParseJSON , defaultOptions
-  , Options (sumEncoding), SumEncoding (UntaggedValue), genericToJSON
+  ( FromJSON (parseJSON), ToJSON
+  , genericParseJSON, defaultOptions
+  , Options (sumEncoding), SumEncoding (UntaggedValue)
   )
 import Data.UUID (UUID, toLazyASCIIBytes)
 import Data.Text as T
@@ -65,8 +65,6 @@ data SendRequestReqBody
   } deriving (Generic)
 instance FromJSON SendRequestReqBody where
   parseJSON = genericParseJSON defaultOptions{ sumEncoding = UntaggedValue }
-instance ToJSON SendRequestReqBody where
-  toJSON = genericToJSON defaultOptions{ sumEncoding = UntaggedValue }
 
 data IndexSelectionReqBody = IndexSelectionReqBody
   { recipientId :: UUID
@@ -119,8 +117,8 @@ sendRequest senderId SendReceiptItemsRequestReqBody{ receiptQr, indexSelections 
     Left (ReceiptItemsImpl.ReceiptDoesNotExist qr) ->
       throwError err404{ errBody = fromString $ T.unpack qr }
     Left (ReceiptItemsImpl.ReceiptIndexOutOfRange _ _) ->
-      throwError err401{ errBody = "Receipt Index was out of range" }
-    Left _ -> error "abobus "
+      throwError err400{ errBody = "Receipt Index was out of range" }
+    Left _ -> error "abobus " -- TODO I have no idea what is this
 
 toResp :: Request 'Pending -> RequestResp
 toResp Request{..} = RequestResp

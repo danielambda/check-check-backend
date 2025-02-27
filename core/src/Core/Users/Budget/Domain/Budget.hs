@@ -7,10 +7,12 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Core.Users.Budget.Domain.Budget
   ( Budget(..), BudgetLowerBoundStatus(..)
-  , applyDelta
+  , RoundingData(..), RoundingStrategy(..)
+  , applyDelta, applyRoundedDelta
   ) where
 
 import Optics
@@ -21,6 +23,8 @@ import Optics
   )
 
 import Core.Common.Domain.RubKopecks (RubKopecks)
+import SmartPrimitives.Positive (pattern Positive, Positive)
+import Prelude hiding (round)
 
 data Budget = Budget
   { amount :: RubKopecks
@@ -31,6 +35,16 @@ data BudgetLowerBoundStatus
   = BudgetLowerBoundExceeded
   | BudgetLowerBoundNotExceeded
   deriving Eq
+
+data RoundingData = RoundingData
+  { eps :: Positive RubKopecks
+  , strategy :: RoundingStrategy
+  }
+
+data RoundingStrategy
+  = RoundUp
+  | RoundToNearest
+  | RoundDown
 
 instance (k ~ A_Lens, a ~ RubKopecks, a ~ b)
       => LabelOptic "amount" k Budget Budget a b where
@@ -54,3 +68,20 @@ applyDelta :: RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
 applyDelta delta budget =
   let budget' = budget & #amount %~ (+ delta)
   in (budget', budget' ^. #lowerBoundStatus)
+
+applyRoundedDelta :: RoundingData -> RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
+applyRoundedDelta RoundingData{ eps, strategy } = applyDelta . round
+  where
+    round = case strategy of
+      RoundUp -> roundUp eps
+      RoundToNearest -> roundToNearest eps
+      RoundDown -> roundDown eps
+
+roundUp :: Integral a => Positive a -> a -> a
+roundUp (Positive eps) x = ((x + eps - 1) `div` eps) * eps
+
+roundToNearest :: Integral a => Positive a -> a -> a
+roundToNearest (Positive eps) x = (x + eps `div` 2) `div` eps * eps
+
+roundDown :: Integral a => Positive a -> a -> a
+roundDown (Positive eps) x = (x `div` eps) * eps
