@@ -24,6 +24,7 @@ import Optics ((&), (^.))
 import Control.Monad.Error.Class (MonadError)
 
 import SmartPrimitives.Positive (Positive)
+import Core.Common.Operators ((^^.), (^^?))
 import Core.Common.Domain.RubKopecks (positiveRubKopecks)
 import Core.Users.Budget.Domain.Budget (RoundingData'(RoundingData), RoundingStrategy (..), BudgetLowerBoundStatus (..))
 import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
@@ -32,8 +33,7 @@ import qualified Core.Users.Requests.MarkCompleted as MarkImpl
   (Dependencies, Data(..), Error (..), markRequestCompleted)
 import qualified Core.Users.Requests.PayFor as PayImpl
   (Dependencies, Data(..), Error (..), payForRequest)
-import WebAPI.Users.Get (BudgetResp(..))
-import Core.Common.Operators ((^^.), (^^?))
+import WebAPI.Users.Budget.Get (BudgetResp(..))
 
 type CompleteIncomingRequest
   =  Capture "requestId" UUID

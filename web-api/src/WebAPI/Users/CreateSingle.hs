@@ -21,7 +21,8 @@ import GHC.Generics (Generic)
 import SmartPrimitives.TextLenRange (TextLenRange)
 import qualified Core.Users.CreateSingle as Impl (createSingle, Dependencies, Data(..))
 import qualified Core.Users.Budget.Create as Impl.Budget (Data(..))
-import WebAPI.Users.Get (UserSingleResp(..), BudgetResp(..), toResp)
+import WebAPI.Users.Budget.Get (BudgetResp(..))
+import WebAPI.Users.Get (UserSingleResp(..), toResp)
 
 type CreateUserSingle =
   ReqBody '[JSON] CreateUserSingleReqBody :> Post '[JSON] UserSingleResp

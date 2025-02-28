@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 
-module Core.Users.MonadClasses.Repository
-  ( UsersRepository(..)
-  ) where
+module Core.Users.MonadClasses.Repository (UsersRepository(..)) where
 
 import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.User (User, SomeUser)
