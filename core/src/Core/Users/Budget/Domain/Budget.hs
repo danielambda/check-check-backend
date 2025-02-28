@@ -11,8 +11,9 @@
 
 module Core.Users.Budget.Domain.Budget
   ( Budget(..), BudgetLowerBoundStatus(..)
-  , RoundingData(..), RoundingStrategy(..)
-  , applyDelta, applyRoundedDelta
+  , RoundingData'(..), RoundingData, RoundingStrategy(..)
+  , applyDelta
+  , spend, spendRounded
   ) where
 
 import Optics
@@ -23,7 +24,7 @@ import Optics
   )
 
 import Core.Common.Domain.RubKopecks (RubKopecks)
-import SmartPrimitives.Positive (pattern Positive, Positive)
+import SmartPrimitives.Positive (pattern Positive, Positive, unPositive)
 import Prelude hiding (round)
 
 data Budget = Budget
@@ -36,8 +37,9 @@ data BudgetLowerBoundStatus
   | BudgetLowerBoundNotExceeded
   deriving Eq
 
-data RoundingData = RoundingData
-  { eps :: Positive RubKopecks
+type RoundingData = RoundingData' RubKopecks
+data RoundingData' a = RoundingData
+  { eps :: Positive a
   , strategy :: RoundingStrategy
   }
 
@@ -64,18 +66,27 @@ instance (k ~ A_Getter, a ~ BudgetLowerBoundStatus, a ~ b)
     Just lowerBound | budget ^. #amount < lowerBound -> BudgetLowerBoundExceeded
     _ -> BudgetLowerBoundNotExceeded
 
-applyDelta :: RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
-applyDelta delta budget =
-  let budget' = budget & #amount %~ (+ delta)
-  in (budget', budget' ^. #lowerBoundStatus)
+applyDelta :: RubKopecks -> Budget -> Budget
+applyDelta delta budget = budget & #amount %~ (+ delta)
 
-applyRoundedDelta :: RoundingData -> RubKopecks -> Budget -> (Budget, BudgetLowerBoundStatus)
-applyRoundedDelta RoundingData{ eps, strategy } = applyDelta . round
-  where
-    round = case strategy of
-      RoundUp -> roundUp eps
-      RoundToNearest -> roundToNearest eps
-      RoundDown -> roundDown eps
+spend :: Positive RubKopecks -> Budget -> Budget
+spend
+  = applyDelta
+  . negate
+  . unPositive
+
+spendRounded :: RoundingData -> Positive RubKopecks -> Budget -> Budget
+spendRounded roundingData
+  = applyDelta
+  . negate
+  . roundWith roundingData
+  . unPositive
+
+roundWith :: Integral a => RoundingData' a -> a -> a
+roundWith RoundingData{ eps, strategy } = case strategy of
+  RoundUp -> roundUp eps
+  RoundToNearest -> roundToNearest eps
+  RoundDown -> roundDown eps
 
 roundUp :: Integral a => Positive a -> a -> a
 roundUp (Positive eps) x = ((x + eps - 1) `div` eps) * eps

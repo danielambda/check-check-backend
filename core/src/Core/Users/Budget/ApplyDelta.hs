@@ -18,6 +18,7 @@ data Error
   = UserDoesNotExist SomeUserId
   | UserDoesNotHaveBudget SomeUserId
 
+-- TODO replace return type with just Budget
 type Dependencies m = UsersRepository m
 applyBudgetDeltaToUser :: Dependencies m
                        => SomeUserId -> RubKopecks
@@ -28,8 +29,9 @@ applyBudgetDeltaToUser userId kopecks =
     Just user -> do
       case applyDelta kopecks <$> user ^? #data % #mBudget of
         Nothing -> return $ Left $ UserDoesNotHaveBudget userId
-        Just (budget, lowerBoundStatus) -> do
+        Just budget -> do
           let budgetAmount = budget ^. #amount
+          let budgetLowerBoundStatus = budget ^. #lowerBoundStatus
           void $ trySetUserBudgetAmountInRepo userId budgetAmount
-          return $ Right (budgetAmount, lowerBoundStatus)
+          return $ Right (budgetAmount, budgetLowerBoundStatus)
 

@@ -7,10 +7,12 @@ Content-Type: application/json
 
 { "action": "markCompleted" }
 
-### Pay for request
-PUT localhost:8080/users/b220e714-d740-402d-b801-cf904fc3834b/incoming-requests/df082a76-7c85-4803-9f84-805a26c56c8d
+### Pay for request with rounding
+PUT localhost:8080/users/b220e714-d740-402d-b801-cf904fc3834b/incoming-requests/53b6acd4-c274-4924-b007-4b6d18bfac46
 Content-Type: application/json
 
 {
-  "action": "payFor"
+  "action": "payFor",
+  "roundingEps": 100,
+  "roundingStrategy": "up"
 }

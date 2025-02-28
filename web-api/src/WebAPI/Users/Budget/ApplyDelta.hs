@@ -29,6 +29,7 @@ import qualified Core.Users.Budget.ApplyDelta as Impl
 type ApplyBudgetDeltaToUser =
   ReqBody '[JSON] Integer :> Put '[JSON] ApplyBudgetDeltaToUserResp
 
+-- TODO replace with BudgetResp
 data ApplyBudgetDeltaToUserResp = ApplyBudgetDeltaToUserResp
   { budget :: Integer
   , lowerBoundExeeded :: Bool
@@ -38,8 +39,8 @@ type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
 applyBudgetDeltaToUser :: Dependencies m => UUID -> ServerT ApplyBudgetDeltaToUser m
 applyBudgetDeltaToUser userId delta =
   Impl.applyBudgetDeltaToUser (SomeUserId $ UserId userId) (RubKopecks delta) >>= \case
-    Right (RubKopecks kopecks, budgetLbStatus) ->
-      return $ ApplyBudgetDeltaToUserResp kopecks (budgetLbStatus == BudgetLowerBoundExceeded)
+    Right (RubKopecks kopecks, budgetLBStatus) ->
+      return $ ApplyBudgetDeltaToUserResp kopecks (budgetLBStatus == BudgetLowerBoundExceeded)
     Left (Impl.UserDoesNotExist _) ->
       throwError err404
     Left (Impl.UserDoesNotHaveBudget (SomeUserId (UserId userId'))) ->

@@ -21,7 +21,7 @@ module Core.Users.Requests.Domain.Request
 import Optics
   ( makeFieldLabelsNoPrefix
   , LabelOptic (labelOptic), A_Getter, to
-  , (^.)
+  , (^.), (&), view
   )
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -33,13 +33,11 @@ import Data.Typeable ((:~:)(Refl), eqT, Typeable)
 import SmartPrimitives.Positive (Positive, sumPositive)
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime(currentTime))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
+import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.UserId (SomeUserId)
+import Core.Users.Budget.Domain.Budget (Budget, spend, spendRounded, RoundingData)
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus (..))
 import Core.Users.Requests.Domain.RequestId (RequestId, newRequestId)
-import Core.Common.Domain.RubKopecks (RubKopecks)
-import Core.Users.Budget.Domain.Budget (Budget, BudgetLowerBoundStatus, applyDelta)
-import Core.Common.Operators ((^^.))
-import Optics.Getter (view)
 
 data Request (status :: RequestStatus) = Request
   { requestId :: RequestId status
@@ -86,11 +84,12 @@ newRequest senderId recipientId items = do
 markCompleted :: Request 'Pending -> Request 'Completed
 markCompleted = coerce
 
-payFor :: Request 'Pending -> Budget -> (Request 'Completed, Budget, BudgetLowerBoundStatus)
-payFor request budget = let
-  (budget', budgetLBStatus) = applyDelta (request ^^. #priceSum) budget
+payFor :: Maybe RoundingData -> Request 'Pending -> Budget -> (Request 'Completed, Budget)
+payFor mRoundingData request budget = let
+  pay = maybe spend spendRounded mRoundingData
+  budget' = budget & pay (request ^. #priceSum)
   completedRequest = markCompleted request
-  in (completedRequest, budget', budgetLBStatus)
+  in (completedRequest, budget')
 
 data SomeRequest where
   SomeRequest :: Typeable status => Request status -> SomeRequest

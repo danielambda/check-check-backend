@@ -20,13 +20,13 @@ module WebAPI.Users.Get
 import Servant (ServerT, (:>), JSON, Get, Capture, throwError, err404, ServerError)
 import Data.Aeson (ToJSON)
 import Data.UUID (UUID)
-import Optics ((^?), (%), to, (<&>), (&))
+import Optics ((^?), (%), to, (<&>), (&), (^.))
 
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.Operators ((^^.), (^^?))
-import Core.Users.Budget.Domain.Budget (Budget)
+import Core.Users.Budget.Domain.Budget (Budget, BudgetLowerBoundStatus (BudgetLowerBoundExceeded))
 import Core.Users.Domain.UserType (UserType(Single))
 import Core.Users.Domain.User (User)
 import Core.Users.Domain.UserId (UserId(UserId))
@@ -46,6 +46,7 @@ data UserSingleResp = UserSingleResp
 data BudgetResp = BudgetResp
   { amount :: Integer
   , lowerBound :: Maybe Integer
+  , isLowerBoundExceeded :: Bool
   } deriving (Generic, ToJSON)
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
@@ -67,6 +68,7 @@ toResp' user = UserSingleResp
     budgetResp budget = BudgetResp
       { amount = budget ^^. #amount
       , lowerBound = budget ^^? #mLowerBound
+      , isLowerBoundExceeded = budget ^. #lowerBoundStatus == BudgetLowerBoundExceeded
       }
 
 -- Загадка от Жака Фреско: Why GHC does not curse me even tho here is no type signature
@@ -76,5 +78,6 @@ toResp = UserSingleResp
   <*> (^? #data % #mBudget % to (BudgetResp
     <$> (^^. #amount)
     <*> (^^? #mLowerBound)
+    <*> (BudgetLowerBoundExceeded ==) . (^. #lowerBoundStatus)
     )
   )
