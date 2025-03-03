@@ -40,7 +40,7 @@ data UserSingleResp = UserSingleResp
   } deriving (Generic, ToJSON)
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
-getUser ::  Dependencies m => ServerT GetUser m
+getUser :: Dependencies m => ServerT GetUser m
 getUser userId = userId
    &  UserId
    &  Impl.get

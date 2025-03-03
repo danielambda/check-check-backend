@@ -34,6 +34,7 @@ import Optics ((^.), (<&>), (&))
 import GHC.Generics (Generic)
 import Data.Time (UTCTime)
 import Data.List.NonEmpty (NonEmpty, toList)
+import Data.String (fromString)
 
 import SmartPrimitives.Positive (Positive)
 import SmartPrimitives.NonNegative (NonNegative)
@@ -49,7 +50,7 @@ import qualified Core.Users.Requests.SendReceiptItems as ReceiptItemsImpl
   ( Dependencies, Data(..), IndexSelection(..)
   , sendRequest , Error(..)
   )
-import Data.String (fromString)
+import WebAPI.Auth (AuthenticatedUser (AUser, userId))
 
 type SendRequest =
   ReqBody '[JSON] SendRequestReqBody :> Post '[JSON] [RequestResp]
@@ -90,10 +91,10 @@ type Dependencies m =
   , ReceiptItemsImpl.Dependencies m
   , MonadError ServerError m
   )
-sendRequest :: Dependencies m => UUID -> ServerT SendRequest m
-sendRequest senderId SendListRequestReqBody{ recipientId, list } = do
+sendRequest :: Dependencies m => AuthenticatedUser -> ServerT SendRequest m
+sendRequest AUser{ userId } SendListRequestReqBody{ recipientId, list } = do
   let data' = ListImpl.Data
-        { senderId = senderId & SomeUserId . UserId
+        { senderId = userId & SomeUserId . UserId
         , recipientId = recipientId & SomeUserId . UserId
         , list = list <&> \SendListRequestItemReqBody{..} -> ListImpl.Item
           { price = positiveRubKopecks price, ..}
@@ -103,9 +104,9 @@ sendRequest senderId SendListRequestReqBody{ recipientId, list } = do
     Left (ListImpl.UserDoesNotExist (SomeUserId (UserId uuid))) ->
       throwError err404{ errBody = toLazyASCIIBytes uuid }
 
-sendRequest senderId SendReceiptItemsRequestReqBody{ receiptQr, indexSelections } = do
+sendRequest AUser{ userId } SendReceiptItemsRequestReqBody{ receiptQr, indexSelections } = do
   let data' = ReceiptItemsImpl.Data
-        { senderId = senderId & SomeUserId . UserId
+        { senderId = userId & SomeUserId . UserId
         , indexSelections = indexSelections <&> \IndexSelectionReqBody{..} ->
             ReceiptItemsImpl.IndexSelection{recipientId = recipientId & SomeUserId . UserId, ..}
         , ..

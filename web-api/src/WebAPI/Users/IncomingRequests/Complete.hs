@@ -34,6 +34,7 @@ import qualified Core.Users.Requests.MarkCompleted as MarkImpl
 import qualified Core.Users.Requests.PayFor as PayImpl
   (Dependencies, Data(..), Error (..), payForRequest)
 import WebAPI.Users.Budget.Get (BudgetResp(..))
+import WebAPI.Auth (AuthenticatedUser (AUser, userId))
 
 type CompleteIncomingRequest
   =  Capture "requestId" UUID
@@ -78,46 +79,47 @@ instance ToJSON CompleteIncomingRequestResp where
     ]
 
 type Dependencies m = (MarkImpl.Dependencies m, PayImpl.Dependencies m, MonadError ServerError m)
-completeIncomingRequest :: Dependencies m => UUID -> ServerT CompleteIncomingRequest m
-completeIncomingRequest recipientId requestId MarkCompletedReqBody = do
-  let data' = MarkImpl.Data
-        { MarkImpl.recipientId = recipientId & SomeUserId . UserId
-        , MarkImpl.requestId = requestId & RequestId
-        }
-  MarkImpl.markRequestCompleted data' >>= \case
-    Right () -> return MarkedCompletedResp
-    Left (MarkImpl.RequestDoesNotExist(RequestId uuid)) ->
-      throwError err404{ errBody = toLazyASCIIBytes uuid }
-    Left (MarkImpl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
-      throwError err404{ errBody = toLazyASCIIBytes uuid }
-    Left (MarkImpl.RequestIsNotPending(RequestId uuid)) ->
-      throwError err400{ errBody = "Request "<>toLazyASCIIBytes uuid<>" is not pending" }
-
-completeIncomingRequest recipientId requestId PayForReqBody{ roundingEps, roundingStrategy } = do
-  let mRoundingData = RoundingData
-        <$> fmap positiveRubKopecks roundingEps
-        <*> fmap mapRoundingStrategy roundingStrategy
-  let data' = PayImpl.Data
-        { PayImpl.recipientId = recipientId & SomeUserId . UserId
-        , PayImpl.requestId = requestId & RequestId
-        , PayImpl.mRoundingData = mRoundingData
-        }
-  PayImpl.payForRequest data' >>= \case
-    Right budget -> return $ PayedForResp $ budgetResp budget
-      where
-        budgetResp b = BudgetResp
-          { amount = b ^^. #amount
-          , lowerBound = b ^^? #mLowerBound
-          , isLowerBoundExceeded = b ^. #lowerBoundStatus == BudgetLowerBoundExceeded
+completeIncomingRequest :: Dependencies m => AuthenticatedUser -> ServerT CompleteIncomingRequest m
+completeIncomingRequest AUser{ userId } requestId = \case
+  MarkCompletedReqBody -> do
+    let data' = MarkImpl.Data
+          { MarkImpl.recipientId = userId & SomeUserId . UserId
+          , MarkImpl.requestId = requestId & RequestId
           }
-    Left (PayImpl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
-      throwError err404{ errBody = toLazyASCIIBytes uuid }
-    Left (PayImpl.UserDoesNotHaveBudget(SomeUserId(UserId uuid))) ->
-      throwError err400{ errBody = "User "<>toLazyASCIIBytes uuid<>" does not have a budget" }
-    Left (PayImpl.RequestDoesNotExist(RequestId uuid)) ->
-      throwError err404{ errBody = toLazyASCIIBytes uuid }
-    Left (PayImpl.RequestIsNotPending(RequestId uuid)) ->
-      throwError err400{ errBody = "Request "<>toLazyASCIIBytes uuid<>" is not pending" }
+    MarkImpl.markRequestCompleted data' >>= \case
+      Right () -> return MarkedCompletedResp
+      Left (MarkImpl.RequestDoesNotExist(RequestId uuid)) ->
+        throwError err404{ errBody = toLazyASCIIBytes uuid }
+      Left (MarkImpl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
+        throwError err404{ errBody = toLazyASCIIBytes uuid }
+      Left (MarkImpl.RequestIsNotPending(RequestId uuid)) ->
+        throwError err400{ errBody = "Request "<>toLazyASCIIBytes uuid<>" is not pending" }
+
+  PayForReqBody{ roundingEps, roundingStrategy } -> do
+    let mRoundingData = RoundingData
+          <$> fmap positiveRubKopecks roundingEps
+          <*> fmap mapRoundingStrategy roundingStrategy
+    let data' = PayImpl.Data
+          { PayImpl.recipientId = userId & SomeUserId . UserId
+          , PayImpl.requestId = requestId & RequestId
+          , PayImpl.mRoundingData = mRoundingData
+          }
+    PayImpl.payForRequest data' >>= \case
+      Right budget -> return $ PayedForResp $ budgetResp budget
+        where
+          budgetResp b = BudgetResp
+            { amount = b ^^. #amount
+            , lowerBound = b ^^? #mLowerBound
+            , isLowerBoundExceeded = b ^. #lowerBoundStatus == BudgetLowerBoundExceeded
+            }
+      Left (PayImpl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
+        throwError err404{ errBody = toLazyASCIIBytes uuid }
+      Left (PayImpl.UserDoesNotHaveBudget(SomeUserId(UserId uuid))) ->
+        throwError err400{ errBody = "User "<>toLazyASCIIBytes uuid<>" does not have a budget" }
+      Left (PayImpl.RequestDoesNotExist(RequestId uuid)) ->
+        throwError err404{ errBody = toLazyASCIIBytes uuid }
+      Left (PayImpl.RequestIsNotPending(RequestId uuid)) ->
+        throwError err400{ errBody = "Request "<>toLazyASCIIBytes uuid<>" is not pending" }
 
 mapRoundingStrategy :: RoundingStrategyReqBody -> RoundingStrategy
 mapRoundingStrategy RoundUpReqBody = RoundUp

@@ -28,14 +28,12 @@ import Infrastructure.Users.Requests.PGRepository (runRequestsRepositoryT)
 newtype AppM a = AppM { runAppM :: ReaderT Env Handler a }
   deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadError ServerError)
 
-data Env = Env
-  { envConnPool :: Pool Connection
-  , envPort :: Int
-  }
+newtype Env = Env
+  { connPool :: Pool Connection }
 
 instance MonadConnReader AppM where
   askConn = do
-    pool <- asks envConnPool
+    pool <- asks connPool
     liftIO $ withResource pool return
 
 instance MonadUUID AppM where

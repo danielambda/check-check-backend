@@ -169,11 +169,6 @@ data DbUser = DbUser
   , isGroup :: Bool
   } deriving (Generic, ToRow, FromRow)
 
-data OtherUserIdRelation = OtherUserIdRelation
-  { userGroupId :: UUID
-  , userSingleId :: UUID
-  } deriving (Generic, ToRow, FromRow)
-
 createUsersTable :: (MonadIO m, MonadConnReader m) => m ()
 createUsersTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS users
@@ -185,6 +180,11 @@ createUsersTable = void $ execute_ [sql|
   , isGroup BOOLEAN NOT NULL
   )
 |]
+
+data OtherUserIdRelation = OtherUserIdRelation
+  { userGroupId :: UUID
+  , userSingleId :: UUID
+  } deriving (Generic, ToRow, FromRow)
 
 createOtherUserIdsTable :: (MonadIO m, MonadConnReader m) => m ()
 createOtherUserIdsTable = void $ execute_ [sql|

@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module WebAPI.Users.Budget.ApplyDelta
   ( Dependencies
@@ -12,21 +13,22 @@ module WebAPI.Users.Budget.ApplyDelta
   ) where
 
 import Servant (ReqBody, JSON, (:>), HasServer(ServerT), err404, ServerError, err400, errBody, Put)
-import Data.UUID (UUID, toLazyASCIIBytes)
+import Data.UUID (toLazyASCIIBytes)
 import Control.Monad.Error.Class (MonadError(throwError))
 
 import Core.Common.Domain.RubKopecks (RubKopecks (..))
 import Core.Users.Domain.UserId (UserId(..), SomeUserId (..))
 import qualified Core.Users.Budget.ApplyDelta as Impl
   (Dependencies, applyBudgetDeltaToUser, Error(..))
+import WebAPI.Auth (AuthenticatedUser(AUser, userId))
 import WebAPI.Users.Budget.Get (BudgetResp, toResp)
 
 type ApplyBudgetDeltaToUser =
   ReqBody '[JSON] Integer :> Put '[JSON] BudgetResp
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
-applyBudgetDeltaToUser :: Dependencies m => UUID -> ServerT ApplyBudgetDeltaToUser m
-applyBudgetDeltaToUser userId delta =
+applyBudgetDeltaToUser :: Dependencies m => AuthenticatedUser -> ServerT ApplyBudgetDeltaToUser m
+applyBudgetDeltaToUser AUser{ userId } delta =
   Impl.applyBudgetDeltaToUser (SomeUserId $ UserId userId) (RubKopecks delta) >>= \case
     Right budget ->
       return $ toResp budget

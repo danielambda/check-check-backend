@@ -1,15 +1,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 
-module WebAPI (application) where
+module WebAPI (mkApp) where
 
 import Servant
-  (Handler, Application, Proxy(Proxy), ServerT, serve, hoistServer, (:<|>)((:<|>)), (:>))
+  (Handler, Application, Proxy(Proxy), ServerT, (:<|>)((:<|>)), (:>), serveWithContextT)
 import Control.Monad.Reader (runReaderT)
 
 import WebAPI.Receipts (ReceiptsAPI, receiptsServer)
 import WebAPI.Users (UsersAPI, usersServer)
 import WebAPI.AppM (AppM(runAppM), Env)
+import WebAPI.Auth (config)
 
 type API
   =    "receipts" :> ReceiptsAPI
@@ -20,8 +21,11 @@ server
   =    receiptsServer
   :<|> usersServer
 
-application :: Env -> Application
-application env = serve api $ hoistServer api nt server
+mkApp :: Env -> IO Application
+mkApp env = do
+  -- serve api $ hoistServer api nt server
+  ctx <- config
+  return $ serveWithContextT api ctx nt server
   where
     api = Proxy :: Proxy API
 

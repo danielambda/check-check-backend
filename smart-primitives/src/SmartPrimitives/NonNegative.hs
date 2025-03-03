@@ -4,7 +4,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module SmartPrimitives.NonNegative (NonNegative, mkNonNegative, unNonNegative, plus, mult) where
+module SmartPrimitives.NonNegative
+  ( NonNegative, mkNonNegative
+  , unNonNegative
+  , plus, mult
+  , nonNegativeLength
+  ) where
 
 import Servant (FromHttpApiData (parseUrlPiece))
 import Database.PostgreSQL.Simple.ToField (ToField)
@@ -27,6 +32,9 @@ instance LabelOptic "value" A_Getter (NonNegative a) (NonNegative a) a a where
 mkNonNegative :: (Num a, Ord a) => a -> Maybe (NonNegative a)
 mkNonNegative a | a >= 0 = Just $ NonNegative a
                 | otherwise = Nothing
+
+nonNegativeLength :: Foldable f => f a -> NonNegative Int
+nonNegativeLength = NonNegative . length
 
 unNonNegative :: NonNegative a -> a
 unNonNegative (NonNegative a) = a

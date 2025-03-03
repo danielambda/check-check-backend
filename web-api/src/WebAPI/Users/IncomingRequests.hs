@@ -5,8 +5,8 @@
 module WebAPI.Users.IncomingRequests (Dependencies, IncomingRequestsAPI, incomingRequestsServer) where
 
 import Servant (ServerT, (:<|>) ((:<|>)))
-import Data.UUID (UUID)
 
+import WebAPI.Auth (AuthenticatedUser)
 import WebAPI.Users.IncomingRequests.GetMany (getIncomingRequests, GetIncomingRequests)
 import qualified WebAPI.Users.IncomingRequests.GetMany as GetMany (Dependencies)
 import WebAPI.Users.IncomingRequests.Complete (completeIncomingRequest, CompleteIncomingRequest)
@@ -17,7 +17,7 @@ type IncomingRequestsAPI
   :<|> CompleteIncomingRequest
 
 type Dependencies m = (GetMany.Dependencies m, Complete.Dependencies m)
-incomingRequestsServer :: Dependencies m => UUID -> ServerT IncomingRequestsAPI m
-incomingRequestsServer recipientId
-  =    getIncomingRequests recipientId
-  :<|> completeIncomingRequest recipientId
+incomingRequestsServer :: Dependencies m => AuthenticatedUser -> ServerT IncomingRequestsAPI m
+incomingRequestsServer user
+  =    getIncomingRequests user
+  :<|> completeIncomingRequest user

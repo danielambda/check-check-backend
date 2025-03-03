@@ -13,6 +13,7 @@ executable web-api
   other-modules:
       WebAPI
       WebAPI.AppM
+      WebAPI.Auth
       WebAPI.Receipts
       WebAPI.Receipts.Get
       WebAPI.Users
@@ -42,6 +43,8 @@ executable web-api
     , optics
     , postgresql-simple
     , resource-pool
+    , servant-auth
+    , servant-auth-server
     , servant-server
     , smart-primitives
     , text

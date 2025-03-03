@@ -6,6 +6,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module WebAPI.Users.IncomingRequests.GetMany
   ( Impl.Dependencies
@@ -28,6 +29,7 @@ import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus(Pending))
 import Core.Users.Requests.Domain.Request (SomeRequest (..), Request (..), RequestItem (..), RequestItemIdentity (..))
 import qualified Core.Users.Requests.GetIncoming as Impl (getIncoming, Dependencies)
+import WebAPI.Auth (AuthenticatedUser (AUser, userId))
 
 type GetIncomingRequests =
   Get '[JSON] [RequestResp]
@@ -47,8 +49,8 @@ data RequestItemResp = RequestItemResp
   , price :: Positive Integer
   } deriving (Generic, ToJSON)
 
-getIncomingRequests :: Impl.Dependencies m => UUID -> ServerT GetIncomingRequests m
-getIncomingRequests userId =
+getIncomingRequests :: Impl.Dependencies m => AuthenticatedUser -> ServerT GetIncomingRequests m
+getIncomingRequests AUser{ userId } =
   fmap toResp <$> Impl.getIncoming (SomeUserId $ UserId userId)
 
 toResp :: SomeRequest -> RequestResp

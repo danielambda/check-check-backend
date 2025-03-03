@@ -13,7 +13,7 @@ Content-Type: application/json
 
 10000
 
-### Take 100 rubles from John Doe budget
+### Take 110 rubles from John Doe budget
 PUT localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
 Content-Type: application/json
 
