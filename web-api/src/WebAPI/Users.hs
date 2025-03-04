@@ -42,7 +42,7 @@ usersServer
              ->   requestsServer user
              :<|> incomingRequestsServer user
              :<|> budgetServer user
-          _  ->   error "TODO you are unauthenticated btw"
+          _ -> error "TODO you are unauthenticated btw"
        )
   :<|> createUserSingle
   :<|> getUser

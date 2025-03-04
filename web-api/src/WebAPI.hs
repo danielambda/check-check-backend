@@ -3,14 +3,20 @@
 
 module WebAPI (mkApp) where
 
+import Servant.Auth.Server (defaultCookieSettings)
 import Servant
-  (Handler, Application, Proxy(Proxy), ServerT, (:<|>)((:<|>)), (:>), serveWithContextT)
+  ( Handler, Application, Proxy(..)
+  , ServerT
+  , (:<|>)((:<|>)), (:>)
+  , serveWithContextT
+  , Context (..)
+  )
 import Control.Monad.Reader (runReaderT)
 
 import WebAPI.Receipts (ReceiptsAPI, receiptsServer)
 import WebAPI.Users (UsersAPI, usersServer)
 import WebAPI.AppM (AppM(runAppM), Env)
-import WebAPI.Auth (config)
+import WebAPI.Auth (getJwtSettings)
 
 type API
   =    "receipts" :> ReceiptsAPI
@@ -23,8 +29,8 @@ server
 
 mkApp :: Env -> IO Application
 mkApp env = do
-  -- serve api $ hoistServer api nt server
-  ctx <- config
+  jwtSettings <- getJwtSettings
+  let ctx = jwtSettings :. defaultCookieSettings :. EmptyContext
   return $ serveWithContextT api ctx nt server
   where
     api = Proxy :: Proxy API

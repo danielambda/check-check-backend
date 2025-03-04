@@ -34,11 +34,14 @@ executable web-api
   build-depends:
       aeson
     , base
+    , base16
+    , base64-bytestring
     , bytestring
     , core
     , dotenv
     , http-conduit
     , infrastructure
+    , jose
     , mtl
     , optics
     , postgresql-simple

@@ -1,47 +1,43 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module WebAPI.Auth (Authenticated, AuthenticatedUser(..), config) where
+module WebAPI.Auth (getJwtSettings, Authenticated, AuthenticatedUser(..)) where
 
-import Servant.Auth.Server (generateKey, defaultJWTSettings, defaultCookieSettings, JWTSettings, CookieSettings, BasicAuthCfg, BasicAuthData (BasicAuthData), AuthResult (Indefinite, Authenticated), FromJWT, ToJWT, FromBasicAuthData (fromBasicAuthData))
-import Servant.Auth (Auth, JWT, BasicAuth)
-import Servant (Context(..))
-import Data.UUID (UUID, fromString)
-import Data.Text (Text)
-import GHC.Generics (Generic)
+import Crypto.JWT (Alg(HS256))
+import Servant.Auth (Auth, JWT)
+import Servant.Auth.Server
+  ( defaultJWTSettings
+  , JWTSettings (jwtAlg)
+  , FromJWT, ToJWT
+  , fromSecret
+  )
+import Data.UUID (UUID)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Function ((&))
-import Data.Maybe (fromJust)
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (pack)
+import Data.ByteString.Base64 (decode)
 
-type Authenticated = Auth '[JWT, BasicAuth] AuthenticatedUser
+import GHC.Generics (Generic)
+import System.Environment (getEnv)
 
-data AuthenticatedUser = AUser
+type Authenticated = Auth '[JWT] AuthenticatedUser
+
+newtype AuthenticatedUser = AUser
   { userId :: UUID
-  , username :: Text
-  , isAdmin :: Bool
   } deriving (Generic, FromJSON, ToJSON, FromJWT, ToJWT)
 
-instance FromBasicAuthData AuthenticatedUser where
-  fromBasicAuthData = (&)
+getJwtSettings :: IO JWTSettings
+getJwtSettings = do
+  key <- fromSecret <$> jwtSecret
+  return $ (defaultJWTSettings key){ jwtAlg = Just HS256 }
 
-type instance BasicAuthCfg = BasicAuthData -> IO (AuthResult AuthenticatedUser)
-
-authCheck :: BasicAuthData -> IO (AuthResult AuthenticatedUser)
-authCheck (BasicAuthData "danielamba" "changeme") = return $ Authenticated $ AUser
-  { userId = fromJust $ fromString "67aa7086-9c2c-422b-ab6d-a53f91c41b4a"
-  , username = "danielamba"
-  , isAdmin = True
-  }
-authCheck (BasicAuthData _ _) = return Indefinite
-
-config :: IO (Context [JWTSettings, CookieSettings, BasicAuthCfg])
-config = do
-  myKey <- generateKey
-  let jwtCfg = defaultJWTSettings myKey
-  let authCfg = authCheck
-  return $ jwtCfg :. defaultCookieSettings :. authCfg :. EmptyContext
-
+jwtSecret :: IO ByteString
+jwtSecret = do
+  base64Secret <- getEnv "JWT_SECRET"
+  case decode (pack base64Secret) of
+    Right secret -> return secret
+    Left _ -> error "Invalid JWT_SECRET format"
