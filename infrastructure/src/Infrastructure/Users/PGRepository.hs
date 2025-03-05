@@ -33,7 +33,7 @@ import Control.Monad.IO.Class (MonadIO)
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
-import Core.Common.Operators ((^^?))
+import Core.Common.Operators ((^^?), (^^.))
 import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
 import Core.Users.Budget.Domain.Budget (Budget(..))
 import Core.Users.Domain.User (User(..), UserData(..), SomeUser(SomeUser))
@@ -52,10 +52,10 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   addUserToRepo = addUserToDb
   getSomeUserFromRepo = getSomeUserFromDb
   userExistsInRepo = userExistsInDb
-  tryApplyBudgetDeltaToUserInRepo = tryApplyBudgetDeltaToUserInDb
-  trySetUserBudgetAmountInRepo = trySetUserBudgetAmountInDb
+  updateSomeUserInRepo = updateSomeUserInDb
 
-  getUserFromRepo :: forall t. Typeable t => UserId t -> UsersRepositoryT m (Maybe (User t))
+  getUserFromRepo :: forall t m0. (MonadIO m0, MonadConnReader m0, Typeable t)
+                  => UserId t -> UsersRepositoryT m0 (Maybe (User t))
   getUserFromRepo = case eqT @t @'Single of
     Just Refl -> getUserSingleFromDb
     Nothing -> case eqT @t @'Group of
@@ -116,24 +116,23 @@ userExistsInDb (SomeUserId userId) =
     SELECT EXISTS(SELECT userId FROM users WHERE userId = ?)
   |] (Only userId)
 
-tryApplyBudgetDeltaToUserInDb :: (MonadIO m, MonadConnReader m)
-                              => SomeUserId -> RubKopecks -> m (Maybe RubKopecks)
-tryApplyBudgetDeltaToUserInDb (SomeUserId userId) (RubKopecks kopecks) =
-  fmap (RubKopecks . fromOnly) <$> queryMaybe [sql|
-    UPDATE budgets
-    SET amount = amount + ?
-    WHERE userId = ?
-    RETURNING amount
-  |] (kopecks, userId)
-
-trySetUserBudgetAmountInDb :: (MonadIO m, MonadConnReader m)
-                           => SomeUserId -> RubKopecks -> m Bool
-trySetUserBudgetAmountInDb (SomeUserId userId) (RubKopecks kopecks) =
-  (0 <) <$> execute [sql|
-    UPDATE budgets
-    SET amount = ?
-    WHERE userId = ?
-  |] (kopecks, userId)
+updateSomeUserInDb :: (MonadIO m, MonadConnReader m) => SomeUser -> m ()
+updateSomeUserInDb (SomeUser user) = do
+  let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
+  let userId = user ^^. #userId
+  withTransaction $ do
+    void $ execute [sql| DELETE FROM users WHERE userId = ? |] (Only userId)
+    void $ execute [sql|
+      INSERT INTO users (userId, username, ownerId, isGroup) VALUES (?, ?, ?, ?)
+    |] dbUser
+    void $ execute [sql| DELETE FROM otherUserIds WHERE userId = ? |] (Only userId)
+    void $ executeMany [sql|
+      INSERT INTO otherUserIds (userGroupId, userSingleId) VALUES (?, ?)
+    |] otherUserIdRelations
+    void $ execute [sql| DELETE FROM budgets WHERE userId = ? |] (Only userId)
+    forM_ mDbBudget $ execute [sql|
+      INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
+    |]
 
 toDb :: User t -> (DbUser, Maybe DbBudget, [OtherUserIdRelation])
 toDb user =

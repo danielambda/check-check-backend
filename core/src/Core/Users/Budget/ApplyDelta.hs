@@ -4,14 +4,14 @@
 
 module Core.Users.Budget.ApplyDelta (Dependencies, applyBudgetDeltaToUser, Error(..)) where
 
-import Optics ((%), (^.), (^?))
+import Optics ((%), (^.), (^?), (.~), (&))
 
 import Data.Functor (void)
 
 import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.UserId (SomeUserId)
 import Core.Users.MonadClasses.Repository
-  (UsersRepository (getSomeUserFromRepo, trySetUserBudgetAmountInRepo))
+  (UsersRepository (getSomeUserFromRepo, updateSomeUserInRepo))
 import Core.Users.Budget.Domain.Budget (applyDelta, Budget)
 
 data Error
@@ -19,16 +19,13 @@ data Error
   | UserDoesNotHaveBudget SomeUserId
 
 type Dependencies m = UsersRepository m
-applyBudgetDeltaToUser :: Dependencies m
-                       => SomeUserId -> RubKopecks
-                       -> m (Either Error Budget)
+applyBudgetDeltaToUser :: Dependencies m => SomeUserId -> RubKopecks -> m (Either Error Budget)
 applyBudgetDeltaToUser userId delta =
   getSomeUserFromRepo userId >>= \case
     Nothing -> return $ Left $ UserDoesNotExist userId
-    Just user -> do
-      case applyDelta delta <$> user ^? #data % #mBudget of
-        Nothing -> return $ Left $ UserDoesNotHaveBudget userId
-        Just budget -> do
-          void $ trySetUserBudgetAmountInRepo userId $ budget ^. #amount
-          return $ Right budget
+    Just user -> case applyDelta delta <$> user ^? #data % #mBudget of
+      Nothing -> return $ Left $ UserDoesNotHaveBudget userId
+      Just budget -> do
+        updateSomeUserInRepo $ user & #data % #mBudget .~ budget
+        return $ Right budget
 

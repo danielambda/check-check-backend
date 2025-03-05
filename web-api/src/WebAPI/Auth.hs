@@ -15,6 +15,7 @@ import Servant.Auth.Server
   , FromJWT, ToJWT
   , fromSecret
   )
+import Data.Text (Text)
 import Data.UUID (UUID)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString (ByteString)
@@ -26,8 +27,9 @@ import System.Environment (getEnv)
 
 type Authenticated = Auth '[JWT] AuthenticatedUser
 
-newtype AuthenticatedUser = AUser
+data AuthenticatedUser = AUser
   { userId :: UUID
+  , username :: Text
   } deriving (Generic, FromJSON, ToJSON, FromJWT, ToJWT)
 
 getJwtSettings :: IO JWTSettings

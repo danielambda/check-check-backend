@@ -10,7 +10,7 @@
 module WebAPI.Users.Get
   ( Dependencies
   , GetUser, getUser
-  , UserSingleResp(..), toResp
+  , UserResp(..), toResp
   ) where
 
 import Servant (ServerT, (:>), JSON, Get, Capture, throwError, err404, ServerError)
@@ -31,9 +31,9 @@ import WebAPI.Users.Budget.Get (BudgetResp)
 import qualified WebAPI.Users.Budget.Get as Budget (toResp)
 
 type GetUser =
-  Capture "userId" UUID :> Get '[JSON] UserSingleResp
+  Capture "userId" UUID :> Get '[JSON] UserResp
 
-data UserSingleResp = UserSingleResp
+data UserResp = UserResp
   { userId :: UUID
   , username :: TextLenRange 2 50
   , budget :: Maybe BudgetResp
@@ -47,8 +47,8 @@ getUser userId = userId
   <&> fmap toResp
   >>= maybe (throwError err404) return
 
-toResp :: User 'Single -> UserSingleResp
-toResp user = UserSingleResp
+toResp :: User 'Single -> UserResp
+toResp user = UserResp
   { userId = user ^^. #userId
   , username = user ^^. #data % #username
   , budget = user ^? #data % #mBudget % to Budget.toResp
