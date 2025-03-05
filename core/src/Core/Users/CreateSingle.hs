@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module Core.Users.CreateSingle
   ( Data(..)
@@ -18,15 +19,15 @@ import Core.Users.Domain.User (User, newUserSingle, UserData(..))
 import Core.Users.Domain.Primitives (Username(..))
 
 data Data = Data
-  { name :: TextLenRange 2 50
+  { username :: TextLenRange 2 50
   , mBudgetData :: Maybe CreateBudget.Data
   }
 
 type Dependencies m = (MonadUUID m, UsersRepository m)
 createSingle :: Dependencies m => Data -> m (User 'Single)
-createSingle Data{ name, mBudgetData } =
+createSingle Data{ username, mBudgetData } =
   let userData = UserData
-        { username = Username name
+        { username = Username username
         , mBudget = CreateBudget.create <$> mBudgetData
         }
   in newUserSingle userData >>=
