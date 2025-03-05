@@ -41,7 +41,7 @@ data RegisterUserResp = RegisterUserResp
 
 registerUser :: Impl.Dependencies m => ServerT RegisterUser m
 registerUser RegisterUserReqBody{ username } =
-  toResp <$> Impl.createSingle Impl.Data{ mBudgetData = Nothing, .. }
+  toResp <$> Impl.createSingle Impl.Data{..}
 
 toResp :: User 'Single -> RegisterUserResp
 toResp user = RegisterUserResp

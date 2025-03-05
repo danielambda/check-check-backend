@@ -14,7 +14,6 @@ import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Common.Operators ((*>>))
 import Core.Users.MonadClasses.Repository (UsersRepository (addUserToRepo, userExistsInRepo))
-import qualified Core.Users.Budget.Create as CreateBudget (create, Data(..))
 import Core.Users.Domain.Primitives (Username(..))
 import Core.Users.Domain.UserId (UserId (..), someUserId)
 import Core.Users.Domain.UserType (UserType(..))
@@ -25,14 +24,13 @@ data Data = CreateGroupData
   { name :: TextLenRange 2 50
   , ownerId :: UserId 'Single
   , otherUserIds :: [UserId 'Single]
-  , mBudgetData :: Maybe CreateBudget.Data
   }
 
 newtype Error = NonExistingGroupMembers (NonEmpty (UserId 'Single))
 
 type Dependencies m = (UsersRepository m, MonadUUID m)
 createGroup :: Dependencies m => Data -> m (Either Error (User 'Group))
-createGroup CreateGroupData{ name, ownerId, otherUserIds, mBudgetData } = do
+createGroup CreateGroupData{ name, ownerId, otherUserIds } = do
   mNonExistingUserIds <- filterM (userExistsInRepo . someUserId) (ownerId:otherUserIds)
   case nonEmpty mNonExistingUserIds of
     Just userIds ->
@@ -43,5 +41,5 @@ createGroup CreateGroupData{ name, ownerId, otherUserIds, mBudgetData } = do
       where
         userData = UserData
           { username = Username name
-          , mBudget = CreateBudget.create <$> mBudgetData
+          , mBudget = Nothing
           }
