@@ -8,10 +8,12 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module Infrastructure.Users.PGRepository
   ( UsersRepositoryT(..)
   , createUsersTable
+  , createBudgetsTable
   , createOtherUserIdsTable
   ) where
 
@@ -21,21 +23,21 @@ import Data.UUID (UUID)
 import Optics ((^.), (%), (^?), (^..))
 
 import Data.Maybe (fromJust)
-import Control.Monad (void)
+import Control.Monad (void, forM_, forM)
 import Control.Monad.IO.Class (MonadIO)
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.Operators ((^^?))
+import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Core.Users.Domain.User (User(..), UserData(..), SomeUser(SomeUser))
 import Core.Users.Domain.Primitives (Username(..))
 import Core.Users.Domain.UserId (UserId (UserId), SomeUserId(SomeUserId))
 import Core.Users.Domain.UserType (UserType(..))
-import Core.Users.Budget.Domain.Budget (Budget(Budget))
+import Core.Users.Budget.Domain.Budget (Budget(..))
 import Infrastructure.Common.Persistence
   (MonadConnReader, execute, executeMany, withTransaction, query, queryMaybe, execute_)
-import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }
@@ -53,49 +55,53 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
 addUserToDb :: (MonadIO m, MonadConnReader m)
             => User t -> m ()
 addUserToDb user = do
-  let (dbUser, otherUserIdRelations) = toDb user
+  let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
   withTransaction $ do
     void $ execute [sql|
-      INSERT INTO users (userId, username, budgetAmount, budgetLowerBound, ownerId, isGroup)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (userId, username, ownerId, isGroup) VALUES (?, ?, ?, ?)
     |] dbUser
     void $ executeMany [sql|
       INSERT INTO otherUserIds (userGroupId, userSingleId) VALUES (?, ?)
     |] otherUserIdRelations
+    forM_ mDbBudget $ execute [sql|
+      INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
+    |]
 
 getSomeUserFromDb :: (MonadIO m, MonadConnReader m)
                   => SomeUserId -> m (Maybe SomeUser)
 getSomeUserFromDb (SomeUserId (UserId userId)) = withTransaction $ do
-  dbUser <- queryMaybe [sql|
-    SELECT userId, username, budgetAmount, budgetLowerBound, ownerId, isGroup
-    FROM users WHERE userId = ?
+  mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
+    SELECT userId, username, ownerId, isGroup
+    FROM users NATURAL JOIN budgets WHERE userId = ?
   |] (Only userId)
-  otherUserIdRelations <- query [sql|
-    SELECT userGroupId, userSingleId
-    FROM otherUserIds WHERE userGroupId = ?
-  |] (Only userId)
-  return $ toDomainSome <$> dbUser <*> pure otherUserIdRelations
+  forM mDbUserJoinBudget $ \(dbUser, mDbBudget) -> do
+    otherUserIdRelations <- query [sql|
+      SELECT userGroupId, userSingleId
+      FROM otherUserIds WHERE userGroupId = ?
+    |] (Only userId)
+    return $ toDomainSome dbUser mDbBudget otherUserIdRelations
 
 getUserSingleFromDb :: (MonadIO m, MonadConnReader m)
                     => UserId 'Single -> m (Maybe (User 'Single))
 getUserSingleFromDb (UserId userId) =
-  fmap toDomainSingle <$> queryMaybe [sql|
-    SELECT userId, username, budgetAmount, budgetLowerBound, NULL, FALSE
+  fmap (uncurry toDomainSingle . unjoin) <$> queryMaybe [sql|
+    SELECT userId, username, amount, lowerBound, NULL, FALSE
     FROM users WHERE userId = ?
   |] (Only userId)
 
 getUserGroupFromDb :: (MonadIO m, MonadConnReader m)
                    => UserId 'Group -> m (Maybe (User 'Group))
 getUserGroupFromDb (UserId userId) = withTransaction $ do
-  dbUser <- queryMaybe [sql|
-    SELECT userId, username, budgetAmount, budgetLowerBound, ownerId, isGroup
+  mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
+    SELECT userId, username, isGroup, budgetAmount, budgetLowerBound, ownerId
     FROM users WHERE userId = ?
   |] (Only userId)
-  otherUserIdRelations <- query [sql|
-    SELECT userGroupId, userSingleId
-    FROM otherUserIds WHERE userGroupId = ?
-  |] (Only userId)
-  return $ toDomainGroup <$> dbUser <*> pure otherUserIdRelations
+  forM mDbUserJoinBudget $ \(dbUser, mDbBudget) -> do
+    otherUserIdRelations <- query [sql|
+      SELECT userGroupId, userSingleId
+      FROM otherUserIds WHERE userGroupId = ?
+    |] (Only userId)
+    return $ toDomainGroup dbUser mDbBudget otherUserIdRelations
 
 userExistsInDb :: (MonadIO m, MonadConnReader m)
                => SomeUserId -> m Bool
@@ -108,63 +114,80 @@ tryApplyBudgetDeltaToUserInDb :: (MonadIO m, MonadConnReader m)
                               => SomeUserId -> RubKopecks -> m (Maybe RubKopecks)
 tryApplyBudgetDeltaToUserInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) =
   fmap (RubKopecks . fromOnly) <$> queryMaybe [sql|
-    UPDATE users
-    SET budgetAmount = budgetAmount + ?
-    WHERE userId = ? AND budgetAmount IS NOT NULL
-    RETURNING budgetAmount
+    UPDATE budgets
+    SET amount = amount + ?
+    WHERE userId = ?
+    RETURNING amount
   |] (kopecks, userId)
 
 trySetUserBudgetAmountInDb :: (MonadIO m, MonadConnReader m)
                            => SomeUserId -> RubKopecks -> m Bool
 trySetUserBudgetAmountInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) =
   (0 <) <$> execute [sql|
-    UPDATE users
-    SET budgetAmount = ?
-    WHERE userId = ? AND budgetAmount IS NOT NULL
+    UPDATE budgets
+    SET amount = ?
+    WHERE userId = ?
   |] (kopecks, userId)
 
-toDb :: User t -> (DbUser, [OtherUserIdRelation])
+toDb :: User t -> (DbUser, Maybe DbBudget, [OtherUserIdRelation])
 toDb user =
   let
     userId = user ^. #userId % #value
     username = user ^. #data % #username % #value
-    budgetAmount = user ^^? #data % #mBudget % #amount
-    budgetLowerBound = user ^^? #data % #mBudget % #mLowerBound
+    mAmount = user ^^? #data % #mBudget % #amount
+    mLowerBound = user ^^? #data % #mBudget % #mLowerBound
     ownerId = user ^? #mOwnerId % #value
     isGroup = case user of UserGroup{} -> True; _ -> False
     otherUserIdRelations = OtherUserIdRelation userId <$> user ^.. #otherUserIds % #value
-  in (DbUser{..}, otherUserIdRelations)
+  in (DbUser{..}, DbBudget userId <$> mAmount <*> pure mLowerBound, otherUserIdRelations)
 
-toDomainSingle :: DbUser -> User 'Single
-toDomainSingle DbUser{..} = UserSingle
+toDomainSingle :: DbUser -> Maybe DbBudget -> User 'Single
+toDomainSingle DbUser{..} mDbBudget = UserSingle
   { userSingleId = UserId userId
   , userSingleData = UserData
     { username = Username username
-    , mBudget = Budget . RubKopecks <$> budgetAmount <*> pure (RubKopecks <$> budgetLowerBound)
+    , mBudget = toDomainBudget <$> mDbBudget
     }
   }
 
-toDomainGroup :: DbUser -> [OtherUserIdRelation] -> User 'Group
-toDomainGroup DbUser{..} otherUserIds = UserGroup
+toDomainSome :: DbUser -> Maybe DbBudget -> [OtherUserIdRelation] -> SomeUser
+toDomainSome dbUser@DbUser{..} mDbBudget otherUserIdRelations
+  | isGroup = SomeUser $ toDomainGroup dbUser mDbBudget otherUserIdRelations
+  | otherwise = SomeUser $ toDomainSingle dbUser mDbBudget
+
+toDomainBudget :: DbBudget -> Budget
+toDomainBudget DbBudget{..} = Budget
+  { amount = RubKopecks amount
+  , mLowerBound = RubKopecks <$> mLowerBound
+  }
+
+toDomainGroup :: DbUser -> Maybe DbBudget -> [OtherUserIdRelation] -> User 'Group
+toDomainGroup DbUser{..} mDbBudget otherUserIds = UserGroup
   { userGroupId = UserId userId
   , ownerId = UserId $ fromJust ownerId
   , otherUserIds = UserId . userSingleId <$> otherUserIds
   , userGroupData = UserData
     { username = Username username
-    , mBudget = Budget . RubKopecks <$> budgetAmount <*> pure (RubKopecks <$> budgetLowerBound)
+    , mBudget = toDomainBudget <$> mDbBudget
     }
   }
 
-toDomainSome :: DbUser -> [OtherUserIdRelation] -> SomeUser
-toDomainSome dbUser@DbUser{isGroup} otherUserIds
-  | isGroup   = SomeUser $ toDomainGroup  dbUser otherUserIds
-  | otherwise = SomeUser $ toDomainSingle dbUser
+unjoin :: DbUserJoinMaybeBudget -> (DbUser, Maybe DbBudget)
+unjoin DbUserJoinMaybeBudget{..} =
+  (DbUser{..}, DbBudget userId <$> mBudgetAmount <*> pure mBudgetLowerBound)
+
+data DbUserJoinMaybeBudget = DbUserJoinMaybeBudget
+  { userId :: UUID
+  , username :: TextLenRange 2 50
+  , isGroup :: Bool
+  , mBudgetAmount :: Maybe Integer
+  , mBudgetLowerBound :: Maybe Integer
+  , ownerId :: Maybe UUID
+  } deriving (Generic, FromRow)
 
 data DbUser = DbUser
   { userId :: UUID
   , username :: TextLenRange 2 50
-  , budgetAmount :: Maybe Integer
-  , budgetLowerBound :: Maybe Integer
   , ownerId :: Maybe UUID
   , isGroup :: Bool
   } deriving (Generic, ToRow, FromRow)
@@ -174,10 +197,23 @@ createUsersTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS users
   ( userId UUID PRIMARY KEY NOT NULL
   , username VARCHAR(50) NOT NULL
-  , budgetAmount INTEGER
-  , budgetLowerBound INTEGER
   , ownerId UUID REFERENCES users(userId)
   , isGroup BOOLEAN NOT NULL
+  )
+|]
+
+data DbBudget = DbBudget
+  { userId :: UUID
+  , amount :: Integer
+  , mLowerBound :: Maybe Integer
+  } deriving (Generic, ToRow, FromRow)
+
+createBudgetsTable :: (MonadIO m, MonadConnReader m) => m ()
+createBudgetsTable = void $ execute_ [sql|
+  CREATE TABLE IF NOT EXISTS budgets
+  ( userId UUID PRIMARY KEY NOT NULL REFERENCES users(userId)
+  , amount INTEGER NOT NULL
+  , lowerBound INTEGER
   )
 |]
 
