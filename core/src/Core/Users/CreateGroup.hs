@@ -8,7 +8,6 @@ module Core.Users.CreateGroup
   , createGroup
   ) where
 
-import Data.Maybe (catMaybes)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
@@ -17,9 +16,10 @@ import Core.Common.Operators ((*>>))
 import Core.Users.MonadClasses.Repository (UsersRepository (addUserToRepo, userExistsInRepo))
 import qualified Core.Users.Budget.Create as CreateBudget (create, Data(..))
 import Core.Users.Domain.Primitives (Username(..))
-import Core.Users.Domain.UserId (UserId, SomeUserId (SomeUserId))
+import Core.Users.Domain.UserId (UserId (..), someUserId)
 import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Domain.User (newUserGroup, User, UserData (..))
+import Control.Monad (filterM)
 
 data Data = CreateGroupData
   { name :: TextLenRange 2 50
@@ -33,7 +33,7 @@ newtype Error = NonExistingGroupMembers (NonEmpty (UserId 'Single))
 type Dependencies m = (UsersRepository m, MonadUUID m)
 createGroup :: Dependencies m => Data -> m (Either Error (User 'Group))
 createGroup CreateGroupData{ name, ownerId, otherUserIds, mBudgetData } = do
-  mNonExistingUserIds <- catMaybes <$> traverse userIdOfNonExisting (ownerId:otherUserIds)
+  mNonExistingUserIds <- filterM (userExistsInRepo . someUserId) (ownerId:otherUserIds)
   case nonEmpty mNonExistingUserIds of
     Just userIds ->
       return $ Left $ NonExistingGroupMembers userIds
@@ -45,8 +45,3 @@ createGroup CreateGroupData{ name, ownerId, otherUserIds, mBudgetData } = do
           { username = Username name
           , mBudget = CreateBudget.create <$> mBudgetData
           }
-
-userIdOfNonExisting :: UsersRepository m => UserId t -> m (Maybe (UserId t))
-userIdOfNonExisting userId = do
-  userExists <- userExistsInRepo $ SomeUserId userId
-  return $ if userExists then Nothing else Just userId

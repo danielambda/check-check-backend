@@ -12,30 +12,30 @@ module WebAPI.Users.Budget.ApplyDelta
   , applyBudgetDeltaToUser
   ) where
 
-import Servant (ReqBody, JSON, (:>), HasServer(ServerT), err404, ServerError, err400, errBody, Put)
+import Servant (ReqBody, JSON, (:>), HasServer(ServerT), err404, ServerError, err400, errBody, Patch)
 import Data.UUID (toLazyASCIIBytes)
 import Control.Monad.Error.Class (MonadError(throwError))
 
 import Core.Common.Domain.RubKopecks (RubKopecks (..))
-import Core.Users.Domain.UserId (UserId(..), SomeUserId (..))
+import Core.Users.Domain.UserId (SomeUserId (..))
 import qualified Core.Users.Budget.ApplyDelta as Impl
   (Dependencies, applyBudgetDeltaToUser, Error(..))
 import WebAPI.Auth (AuthenticatedUser(AUser, userId))
 import WebAPI.Users.Budget.Get (BudgetResp, toResp)
 
 type ApplyBudgetDeltaToUser =
-  ReqBody '[JSON] Integer :> Put '[JSON] BudgetResp
+  ReqBody '[JSON] Integer :> Patch '[JSON] BudgetResp
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
 applyBudgetDeltaToUser :: Dependencies m => AuthenticatedUser -> ServerT ApplyBudgetDeltaToUser m
 applyBudgetDeltaToUser AUser{ userId } delta =
-  Impl.applyBudgetDeltaToUser (SomeUserId $ UserId userId) (RubKopecks delta) >>= \case
+  Impl.applyBudgetDeltaToUser (SomeUserId userId) (RubKopecks delta) >>= \case
     Right budget ->
       return $ toResp budget
-    Left (Impl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
+    Left (Impl.UserDoesNotExist(SomeUserId uuid)) ->
       throwError err404
         { errBody = toLazyASCIIBytes uuid }
-    Left (Impl.UserDoesNotHaveBudget(SomeUserId(UserId uuid))) ->
+    Left (Impl.UserDoesNotHaveBudget(SomeUserId uuid)) ->
       throwError err400
         { errBody = "User " <> toLazyASCIIBytes uuid <> " does not have a budget" }
 

@@ -38,7 +38,7 @@ import qualified Data.List.NonEmpty as NonEmpty (append, singleton)
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
 import Core.Common.Domain.RubKopecks (positiveRubKopecks)
-import Core.Users.Domain.UserId (SomeUserId (SomeUserId), UserId (UserId))
+import Core.Users.Domain.UserId (SomeUserId (SomeUserId))
 import Core.Users.Requests.Domain.RequestId (RequestId(RequestId), SomeRequestId (SomeRequestId))
 import Core.Users.Requests.MonadClasses.Repository (RequestsRepository(..))
 import Core.Users.Requests.Domain.Request
@@ -73,7 +73,7 @@ addRequestToDb request =
     |] dbRequestItems
 
 getIncomingRequestsFromDb :: (MonadIO m, MonadConnReader m) => SomeUserId -> m [SomeRequest]
-getIncomingRequestsFromDb (SomeUserId(UserId recipientId)) =
+getIncomingRequestsFromDb (SomeUserId recipientId) =
   map (uncurry toDomain) . normalize <$> query [sql|
     SELECT requestId, senderId, createdAt, isPending
                     , identityTag, identityContents
@@ -144,8 +144,8 @@ toDomain DbRequest{..} dbRequestItems
     request :: Request status
     request = Request
       { requestId = RequestId requestId
-      , senderId    = SomeUserId $ UserId senderId
-      , recipientId = SomeUserId $ UserId recipientId
+      , senderId    = SomeUserId senderId
+      , recipientId = SomeUserId recipientId
       , items = toDomain' <$> dbRequestItems
       , ..
       }

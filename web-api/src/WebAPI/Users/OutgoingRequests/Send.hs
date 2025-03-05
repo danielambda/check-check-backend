@@ -39,7 +39,7 @@ import Data.String (fromString)
 import SmartPrimitives.Positive (Positive)
 import SmartPrimitives.NonNegative (NonNegative)
 import Core.Common.Domain.RubKopecks (positiveRubKopecks)
-import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
+import Core.Users.Domain.UserId (SomeUserId(SomeUserId))
 import Core.Users.Requests.Domain.Request (Request(..))
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus(Pending))
 import qualified Core.Users.Requests.SendList as ListImpl
@@ -94,26 +94,26 @@ type Dependencies m =
 sendRequest :: Dependencies m => AuthenticatedUser -> ServerT SendRequest m
 sendRequest AUser{ userId } SendListRequestReqBody{ recipientId, list } = do
   let data' = ListImpl.Data
-        { senderId = userId & SomeUserId . UserId
-        , recipientId = recipientId & SomeUserId . UserId
+        { senderId = userId & SomeUserId
+        , recipientId = recipientId & SomeUserId
         , list = list <&> \SendListRequestItemReqBody{..} -> ListImpl.Item
           { price = positiveRubKopecks price, ..}
         }
   ListImpl.sendRequest data' >>= \case
     Right req -> return [toResp req]
-    Left (ListImpl.UserDoesNotExist (SomeUserId (UserId uuid))) ->
+    Left (ListImpl.UserDoesNotExist (SomeUserId uuid)) ->
       throwError err404{ errBody = toLazyASCIIBytes uuid }
 
 sendRequest AUser{ userId } SendReceiptItemsRequestReqBody{ receiptQr, indexSelections } = do
   let data' = ReceiptItemsImpl.Data
-        { senderId = userId & SomeUserId . UserId
+        { senderId = userId & SomeUserId
         , indexSelections = indexSelections <&> \IndexSelectionReqBody{..} ->
-            ReceiptItemsImpl.IndexSelection{recipientId = recipientId & SomeUserId . UserId, ..}
+            ReceiptItemsImpl.IndexSelection{ recipientId = recipientId & SomeUserId, .. }
         , ..
         }
   ReceiptItemsImpl.sendRequest data' >>= \case
     Right reqs -> return $ toResp <$> toList reqs
-    Left (ReceiptItemsImpl.UserDoesNotExist (SomeUserId (UserId uuid))) ->
+    Left (ReceiptItemsImpl.UserDoesNotExist (SomeUserId uuid)) ->
       throwError err404{ errBody = toLazyASCIIBytes uuid }
     Left (ReceiptItemsImpl.ReceiptDoesNotExist qr) ->
       throwError err404{ errBody = fromString $ T.unpack qr }

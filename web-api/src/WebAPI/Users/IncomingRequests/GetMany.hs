@@ -25,7 +25,7 @@ import GHC.Generics (Generic)
 
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
-import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
+import Core.Users.Domain.UserId (SomeUserId(SomeUserId))
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus(Pending))
 import Core.Users.Requests.Domain.Request (SomeRequest (..), Request (..), RequestItem (..), RequestItemIdentity (..))
 import qualified Core.Users.Requests.GetIncoming as Impl (getIncoming, Dependencies)
@@ -51,7 +51,7 @@ data RequestItemResp = RequestItemResp
 
 getIncomingRequests :: Impl.Dependencies m => AuthenticatedUser -> ServerT GetIncomingRequests m
 getIncomingRequests AUser{ userId } =
-  fmap toResp <$> Impl.getIncoming (SomeUserId $ UserId userId)
+  fmap toResp <$> Impl.getIncoming (SomeUserId userId)
 
 toResp :: SomeRequest -> RequestResp
 toResp (SomeRequest request@Request{..}) = RequestResp

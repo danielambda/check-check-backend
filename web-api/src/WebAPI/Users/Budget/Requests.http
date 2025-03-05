@@ -2,20 +2,20 @@
 GET localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a
 
 ### Apply 0 delta to John Doe budget
-PUT localhost:8080/users/budget
+PATCH localhost:8080/users/budget
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXQiOnsidXNlcklkIjoiYWE5MmE4NTMtZjdiZi00YWE1LThkNGQtODg4MDk4YmEzMTA2In0sIm5iZiI6MTc0MTEyNDM1OSwiZXhwIjoxNzQxMTI3OTU5LCJpYXQiOjE3NDExMjQzNTl9.ytMBwX5jDG66GwbxRY6C8n4lKazP3JB_K7UAwdXsRjc
 
 0
 
 ### Add 100 rubles to John Doe budget
-PUT localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
+PATCH localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
 Content-Type: application/json
 
 10000
 
 ### Take 110 rubles from John Doe budget
-PUT localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
+PATCH localhost:8080/users/67aa7086-9c2c-422b-ab6d-a53f91c41b4a/budget
 Content-Type: application/json
 
 -11000

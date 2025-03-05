@@ -16,11 +16,10 @@ import Data.Text (Text)
 import Optics ((^.))
 
 import Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty ((!!), length)
+import qualified Data.List.NonEmpty as NonEmpty ((!!))
 import Control.Monad (forM)
-import Data.Maybe (fromJust)
 
-import SmartPrimitives.NonNegative (NonNegative, unNonNegative, mkNonNegative, nonNegativeLength)
+import SmartPrimitives.NonNegative (NonNegative, unNonNegative, nonNegativeLength)
 import Core.Common.Operators ((*>>))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime)

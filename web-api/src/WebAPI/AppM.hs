@@ -49,8 +49,7 @@ instance ReceiptsRepository AppM where
 
 instance UsersRepository AppM where
   addUserToRepo = runUsersRepositoryT . addUserToRepo
-  getUserSingleFromRepo = runUsersRepositoryT . getUserSingleFromRepo
-  getUserGroupFromRepo = runUsersRepositoryT . getUserGroupFromRepo
+  getUserFromRepo = runUsersRepositoryT . getUserFromRepo
   getSomeUserFromRepo = runUsersRepositoryT . getSomeUserFromRepo
   userExistsInRepo = runUsersRepositoryT . userExistsInRepo
   tryApplyBudgetDeltaToUserInRepo = (runUsersRepositoryT .) . tryApplyBudgetDeltaToUserInRepo

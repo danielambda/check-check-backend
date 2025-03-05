@@ -19,6 +19,7 @@ executable web-api
       WebAPI.Users
       WebAPI.Users.Budget
       WebAPI.Users.Budget.ApplyDelta
+      WebAPI.Users.Budget.Create
       WebAPI.Users.Budget.Get
       WebAPI.Users.Get
       WebAPI.Users.IncomingRequests

@@ -9,6 +9,10 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Infrastructure.Users.PGRepository
   ( UsersRepositoryT(..)
@@ -23,6 +27,7 @@ import Data.UUID (UUID)
 import Optics ((^.), (%), (^?), (^..))
 
 import Data.Maybe (fromJust)
+import Data.Typeable (type (:~:)(Refl), Typeable, eqT)
 import Control.Monad (void, forM_, forM)
 import Control.Monad.IO.Class (MonadIO)
 import GHC.Generics (Generic)
@@ -30,12 +35,12 @@ import GHC.Generics (Generic)
 import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.Operators ((^^?))
 import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
-import Core.Users.MonadClasses.Repository (UsersRepository(..))
+import Core.Users.Budget.Domain.Budget (Budget(..))
 import Core.Users.Domain.User (User(..), UserData(..), SomeUser(SomeUser))
 import Core.Users.Domain.Primitives (Username(..))
 import Core.Users.Domain.UserId (UserId (UserId), SomeUserId(SomeUserId))
 import Core.Users.Domain.UserType (UserType(..))
-import Core.Users.Budget.Domain.Budget (Budget(..))
+import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Infrastructure.Common.Persistence
   (MonadConnReader, execute, executeMany, withTransaction, query, queryMaybe, execute_)
 
@@ -45,15 +50,19 @@ newtype UsersRepositoryT m a = UsersRepositoryT
 
 instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) where
   addUserToRepo = addUserToDb
-  getUserSingleFromRepo = getUserSingleFromDb
-  getUserGroupFromRepo = getUserGroupFromDb
   getSomeUserFromRepo = getSomeUserFromDb
   userExistsInRepo = userExistsInDb
   tryApplyBudgetDeltaToUserInRepo = tryApplyBudgetDeltaToUserInDb
   trySetUserBudgetAmountInRepo = trySetUserBudgetAmountInDb
 
-addUserToDb :: (MonadIO m, MonadConnReader m)
-            => User t -> m ()
+  getUserFromRepo :: forall t. Typeable t => UserId t -> UsersRepositoryT m (Maybe (User t))
+  getUserFromRepo = case eqT @t @'Single of
+    Just Refl -> getUserSingleFromDb
+    Nothing -> case eqT @t @'Group of
+      Just Refl -> getUserGroupFromDb
+      Nothing -> error "unreachable"
+
+addUserToDb :: (MonadIO m, MonadConnReader m) => User t -> m ()
 addUserToDb user = do
   let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
   withTransaction $ do
@@ -67,9 +76,8 @@ addUserToDb user = do
       INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
     |]
 
-getSomeUserFromDb :: (MonadIO m, MonadConnReader m)
-                  => SomeUserId -> m (Maybe SomeUser)
-getSomeUserFromDb (SomeUserId (UserId userId)) = withTransaction $ do
+getSomeUserFromDb :: (MonadIO m, MonadConnReader m) => SomeUserId -> m (Maybe SomeUser)
+getSomeUserFromDb (SomeUserId userId) = withTransaction $ do
   mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
     SELECT userId, username, ownerId, isGroup
     FROM users NATURAL JOIN budgets WHERE userId = ?
@@ -81,16 +89,14 @@ getSomeUserFromDb (SomeUserId (UserId userId)) = withTransaction $ do
     |] (Only userId)
     return $ toDomainSome dbUser mDbBudget otherUserIdRelations
 
-getUserSingleFromDb :: (MonadIO m, MonadConnReader m)
-                    => UserId 'Single -> m (Maybe (User 'Single))
+getUserSingleFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m (Maybe (User 'Single))
 getUserSingleFromDb (UserId userId) =
   fmap (uncurry toDomainSingle . unjoin) <$> queryMaybe [sql|
     SELECT userId, username, amount, lowerBound, NULL, FALSE
     FROM users WHERE userId = ?
   |] (Only userId)
 
-getUserGroupFromDb :: (MonadIO m, MonadConnReader m)
-                   => UserId 'Group -> m (Maybe (User 'Group))
+getUserGroupFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Group -> m (Maybe (User 'Group))
 getUserGroupFromDb (UserId userId) = withTransaction $ do
   mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
     SELECT userId, username, isGroup, budgetAmount, budgetLowerBound, ownerId
@@ -105,14 +111,14 @@ getUserGroupFromDb (UserId userId) = withTransaction $ do
 
 userExistsInDb :: (MonadIO m, MonadConnReader m)
                => SomeUserId -> m Bool
-userExistsInDb (SomeUserId (UserId userId)) =
+userExistsInDb (SomeUserId userId) =
   fromOnly . head <$> query [sql|
     SELECT EXISTS(SELECT userId FROM users WHERE userId = ?)
   |] (Only userId)
 
 tryApplyBudgetDeltaToUserInDb :: (MonadIO m, MonadConnReader m)
                               => SomeUserId -> RubKopecks -> m (Maybe RubKopecks)
-tryApplyBudgetDeltaToUserInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) =
+tryApplyBudgetDeltaToUserInDb (SomeUserId userId) (RubKopecks kopecks) =
   fmap (RubKopecks . fromOnly) <$> queryMaybe [sql|
     UPDATE budgets
     SET amount = amount + ?
@@ -122,7 +128,7 @@ tryApplyBudgetDeltaToUserInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) 
 
 trySetUserBudgetAmountInDb :: (MonadIO m, MonadConnReader m)
                            => SomeUserId -> RubKopecks -> m Bool
-trySetUserBudgetAmountInDb (SomeUserId (UserId userId)) (RubKopecks kopecks) =
+trySetUserBudgetAmountInDb (SomeUserId userId) (RubKopecks kopecks) =
   (0 <) <$> execute [sql|
     UPDATE budgets
     SET amount = ?

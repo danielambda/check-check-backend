@@ -27,7 +27,7 @@ import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.), (^^?))
 import Core.Common.Domain.RubKopecks (positiveRubKopecks)
 import Core.Users.Budget.Domain.Budget (RoundingData'(RoundingData), RoundingStrategy (..), BudgetLowerBoundStatus (..))
-import Core.Users.Domain.UserId (SomeUserId(SomeUserId), UserId (UserId))
+import Core.Users.Domain.UserId (SomeUserId(SomeUserId))
 import Core.Users.Requests.Domain.RequestId (RequestId(RequestId))
 import qualified Core.Users.Requests.MarkCompleted as MarkImpl
   (Dependencies, Data(..), Error (..), markRequestCompleted)
@@ -83,14 +83,14 @@ completeIncomingRequest :: Dependencies m => AuthenticatedUser -> ServerT Comple
 completeIncomingRequest AUser{ userId } requestId = \case
   MarkCompletedReqBody -> do
     let data' = MarkImpl.Data
-          { MarkImpl.recipientId = userId & SomeUserId . UserId
+          { MarkImpl.recipientId = userId & SomeUserId
           , MarkImpl.requestId = requestId & RequestId
           }
     MarkImpl.markRequestCompleted data' >>= \case
       Right () -> return MarkedCompletedResp
       Left (MarkImpl.RequestDoesNotExist(RequestId uuid)) ->
         throwError err404{ errBody = toLazyASCIIBytes uuid }
-      Left (MarkImpl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
+      Left (MarkImpl.UserDoesNotExist(SomeUserId uuid)) ->
         throwError err404{ errBody = toLazyASCIIBytes uuid }
       Left (MarkImpl.RequestIsNotPending(RequestId uuid)) ->
         throwError err400{ errBody = "Request "<>toLazyASCIIBytes uuid<>" is not pending" }
@@ -100,7 +100,7 @@ completeIncomingRequest AUser{ userId } requestId = \case
           <$> fmap positiveRubKopecks roundingEps
           <*> fmap mapRoundingStrategy roundingStrategy
     let data' = PayImpl.Data
-          { PayImpl.recipientId = userId & SomeUserId . UserId
+          { PayImpl.recipientId = userId & SomeUserId
           , PayImpl.requestId = requestId & RequestId
           , PayImpl.mRoundingData = mRoundingData
           }
@@ -112,9 +112,9 @@ completeIncomingRequest AUser{ userId } requestId = \case
             , lowerBound = b ^^? #mLowerBound
             , isLowerBoundExceeded = b ^. #lowerBoundStatus == BudgetLowerBoundExceeded
             }
-      Left (PayImpl.UserDoesNotExist(SomeUserId(UserId uuid))) ->
+      Left (PayImpl.UserDoesNotExist(SomeUserId uuid)) ->
         throwError err404{ errBody = toLazyASCIIBytes uuid }
-      Left (PayImpl.UserDoesNotHaveBudget(SomeUserId(UserId uuid))) ->
+      Left (PayImpl.UserDoesNotHaveBudget(SomeUserId uuid)) ->
         throwError err400{ errBody = "User "<>toLazyASCIIBytes uuid<>" does not have a budget" }
       Left (PayImpl.RequestDoesNotExist(RequestId uuid)) ->
         throwError err404{ errBody = toLazyASCIIBytes uuid }
