@@ -1,13 +1,13 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 
-module Core.Users.Get (Dependencies, get) where
+module Core.Users.GetGroup (Dependencies, getGroup) where
 
 import Core.Users.Domain.UserId (UserId)
-import Core.Users.Domain.UserType (UserType(Single))
+import Core.Users.Domain.UserType (UserType(Group))
 import Core.Users.Domain.User (User)
 import Core.Users.MonadClasses.Repository (UsersRepository(getUserFromRepo))
 
 type Dependencies m = (UsersRepository m)
-get :: Dependencies m => UserId 'Single -> m (Maybe (User 'Single))
-get = getUserFromRepo
+getGroup :: Dependencies m => UserId 'Group -> m (Maybe (User 'Group))
+getGroup = getUserFromRepo

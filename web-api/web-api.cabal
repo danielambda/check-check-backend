@@ -14,6 +14,9 @@ executable web-api
       WebAPI
       WebAPI.AppM
       WebAPI.Auth
+      WebAPI.Groups
+      WebAPI.Groups.Create
+      WebAPI.Groups.Get
       WebAPI.Receipts
       WebAPI.Receipts.Get
       WebAPI.Users
@@ -35,11 +38,11 @@ executable web-api
   build-depends:
       aeson
     , base
-    , base16
     , base64-bytestring
     , bytestring
     , core
     , dotenv
+    , hedis
     , http-conduit
     , infrastructure
     , jose

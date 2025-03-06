@@ -29,7 +29,7 @@ executable:
   - resource-pool
   - time
   - jose
-  - base16
+  - hedis
 
   ghc-options:
   - -threaded

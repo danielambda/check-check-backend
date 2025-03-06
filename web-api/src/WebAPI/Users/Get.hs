@@ -27,7 +27,7 @@ import Core.Common.Operators ((^^.))
 import Core.Users.Domain.UserType (UserType(Single))
 import Core.Users.Domain.User (User)
 import Core.Users.Domain.UserId (UserId(UserId))
-import qualified Core.Users.Get as Impl (get, Dependencies)
+import qualified Core.Users.GetSingle as Impl (getSingle, Dependencies)
 import WebAPI.Users.Budget.Get (BudgetResp)
 import qualified WebAPI.Users.Budget.Get as Budget (toResp)
 import WebAPI.Auth (AuthenticatedUser (..))
@@ -47,7 +47,7 @@ type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
 getMe :: Dependencies m => AuthenticatedUser -> ServerT GetMe m
 getMe AUser{ userId, username } = userId
    &  UserId
-   &  Impl.get
+   &  Impl.getSingle
   <&> fmap toResp
   >>= maybe createMe return
   where

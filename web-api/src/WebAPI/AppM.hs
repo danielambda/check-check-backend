@@ -4,7 +4,8 @@ module WebAPI.AppM (AppM(..), Env(..)) where
 
 import Servant (Handler, ServerError)
 
-import Database.PostgreSQL.Simple (Connection)
+import qualified Database.PostgreSQL.Simple as PG (Connection)
+import qualified Database.Redis as Redis (Connection)
 import Data.Pool (Pool, withResource)
 import Data.UUID.V4 (nextRandom)
 import Data.Time (getCurrentTime)
@@ -28,13 +29,20 @@ import Infrastructure.Users.Requests.PGRepository (runRequestsRepositoryT)
 newtype AppM a = AppM { runAppM :: ReaderT Env Handler a }
   deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadError ServerError)
 
-newtype Env = Env
-  { connPool :: Pool Connection }
+data Env = Env
+  { pgConnPool :: Pool PG.Connection
+  , redisConnPool :: Pool Redis.Connection
+  }
 
 instance MonadConnReader AppM where
   askConn = do
-    pool <- asks connPool
+    pool <- asks pgConnPool
     liftIO $ withResource pool return
+
+askRedisConn :: AppM Redis.Connection
+askRedisConn = do
+  pool <- asks redisConnPool
+  liftIO $ withResource pool return
 
 instance MonadUUID AppM where
   newUUID = liftIO nextRandom
