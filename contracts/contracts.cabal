@@ -1,0 +1,34 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           contracts
+version:        0.1.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      CheckCheck.Contracts.API
+  other-modules:
+      CheckCheck.Contracts.Groups
+      CheckCheck.Contracts.Receipts
+      CheckCheck.Contracts.Users
+      CheckCheck.Contracts.Users.Budget
+      CheckCheck.Contracts.Users.IncomingRequests
+      CheckCheck.Contracts.Users.OutgoingRequests
+      Paths_contracts
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wredundant-constraints
+  build-depends:
+      aeson
+    , base
+    , servant
+    , servant-auth
+    , smart-primitives
+    , text
+    , time
+    , uuid
+  default-language: Haskell2010

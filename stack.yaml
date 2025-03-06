@@ -8,6 +8,7 @@ nix:
 snapshot: lts-22.43
 
 packages:
+- contracts
 - web-api
 - infrastructure
 - core

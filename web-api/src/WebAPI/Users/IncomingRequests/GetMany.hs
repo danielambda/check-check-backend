@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
@@ -15,7 +14,7 @@ module WebAPI.Users.IncomingRequests.GetMany
 
 import Servant (ServerT, JSON, Get)
 import Data.Aeson (ToJSON)
-import Optics ((^.), (&))
+import Optics ((^.))
 import Data.UUID (UUID)
 import Data.Time (UTCTime)
 import Data.Text (Text)
@@ -65,7 +64,7 @@ toResp (SomeRequest request@Request{..}) = RequestResp
   where
     toResp' :: RequestItem -> RequestItemResp
     toResp' RequestItem{..} = RequestItemResp
-      { identity = identity & \case
+      { identity = case identity of
         TextIdentity t -> t
         ReceiptItemNameIdentity t -> t
       , price = price ^. #posValue
