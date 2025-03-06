@@ -9,10 +9,9 @@
 
 module WebAPI.Users.Budget.Create (Dependencies, CreateBudget, createBudget) where
 
-import Servant (ReqBody, JSON, (:>), Post, HasServer (ServerT), err404, errBody, ServerError)
+import Servant (ReqBody, JSON, (:>), Post, HasServer (ServerT), err404, err400, errBody, ServerError)
 import Control.Monad.Error.Class (MonadError (throwError))
 
-import qualified Core.Users.Budget.Create as Impl (Data(..), create, Dependencies, Error(UserDoesNotExist))
 import WebAPI.Auth (AuthenticatedUser (..))
 import Core.Users.Domain.UserId (SomeUserId(SomeUserId))
 import GHC.Generics (Generic)
@@ -20,6 +19,7 @@ import Data.Aeson (FromJSON)
 import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
 import WebAPI.Users.Budget.Get (BudgetResp, toResp)
 import Data.UUID (toLazyASCIIBytes)
+import qualified Core.Users.Budget.Create as Impl (Data(..), create, Dependencies, Error(..))
 
 type CreateBudget =
   ReqBody '[JSON] CreateBudgetReqBody :> Post '[JSON] BudgetResp
@@ -39,3 +39,6 @@ createBudget AUser{ userId } CreateBudgetReqBody{..} =
   where
     mapError (Impl.UserDoesNotExist(SomeUserId uuid)) =
       throwError err404{ errBody = toLazyASCIIBytes uuid }
+    mapError (Impl.UserAlreadyHasBudget(SomeUserId uuid)) =
+      throwError err400{ errBody = toLazyASCIIBytes uuid }
+

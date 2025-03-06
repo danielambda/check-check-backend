@@ -79,8 +79,8 @@ addUserToDb user = do
 getSomeUserFromDb :: (MonadIO m, MonadConnReader m) => SomeUserId -> m (Maybe SomeUser)
 getSomeUserFromDb (SomeUserId userId) = withTransaction $ do
   mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
-    SELECT userId, username, ownerId, isGroup
-    FROM users NATURAL JOIN budgets WHERE userId = ?
+    SELECT userId, username, ownerId, isGroup, amount, lowerBound
+    FROM users NATURAL LEFT JOIN budgets WHERE userId = ?
   |] (Only userId)
   forM mDbUserJoinBudget $ \(dbUser, mDbBudget) -> do
     otherUserIdRelations <- query [sql|
@@ -92,15 +92,15 @@ getSomeUserFromDb (SomeUserId userId) = withTransaction $ do
 getUserSingleFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m (Maybe (User 'Single))
 getUserSingleFromDb (UserId userId) =
   fmap (uncurry toDomainSingle . unjoin) <$> queryMaybe [sql|
-    SELECT userId, username, amount, lowerBound, NULL, FALSE
-    FROM users WHERE userId = ?
+    SELECT userId, username, NULL, FALSE, amount, lowerBound
+    FROM users NATURAL LEFT JOIN budgets WHERE userId = ?
   |] (Only userId)
 
 getUserGroupFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Group -> m (Maybe (User 'Group))
 getUserGroupFromDb (UserId userId) = withTransaction $ do
   mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
-    SELECT userId, username, isGroup, budgetAmount, budgetLowerBound, ownerId
-    FROM users WHERE userId = ?
+    SELECT userId, username, ownerId, isGroup, amount, lowerBound
+    FROM users NATURAL LEFT JOIN budgets WHERE userId = ?
   |] (Only userId)
   forM mDbUserJoinBudget $ \(dbUser, mDbBudget) -> do
     otherUserIdRelations <- query [sql|
@@ -113,7 +113,7 @@ userExistsInDb :: (MonadIO m, MonadConnReader m)
                => SomeUserId -> m Bool
 userExistsInDb (SomeUserId userId) =
   fromOnly . head <$> query [sql|
-    SELECT EXISTS(SELECT userId FROM users WHERE userId = ?)
+    SELECT EXISTS(SELECT 1 FROM users WHERE userId = ?)
   |] (Only userId)
 
 updateSomeUserInDb :: (MonadIO m, MonadConnReader m) => SomeUser -> m ()
@@ -121,15 +121,15 @@ updateSomeUserInDb (SomeUser user) = do
   let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
   let userId = user ^^. #userId
   withTransaction $ do
+    void $ execute [sql| DELETE FROM budgets WHERE userId = ? |] (Only userId)
+    void $ execute [sql| DELETE FROM otherUserIds WHERE userGroupId = ? |] (Only userId)
     void $ execute [sql| DELETE FROM users WHERE userId = ? |] (Only userId)
     void $ execute [sql|
       INSERT INTO users (userId, username, ownerId, isGroup) VALUES (?, ?, ?, ?)
     |] dbUser
-    void $ execute [sql| DELETE FROM otherUserIds WHERE userId = ? |] (Only userId)
     void $ executeMany [sql|
       INSERT INTO otherUserIds (userGroupId, userSingleId) VALUES (?, ?)
     |] otherUserIdRelations
-    void $ execute [sql| DELETE FROM budgets WHERE userId = ? |] (Only userId)
     forM_ mDbBudget $ execute [sql|
       INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
     |]
@@ -184,10 +184,10 @@ unjoin DbUserJoinMaybeBudget{..} =
 data DbUserJoinMaybeBudget = DbUserJoinMaybeBudget
   { userId :: UUID
   , username :: TextLenRange 2 50
+  , ownerId :: Maybe UUID
   , isGroup :: Bool
   , mBudgetAmount :: Maybe Integer
   , mBudgetLowerBound :: Maybe Integer
-  , ownerId :: Maybe UUID
   } deriving (Generic, FromRow)
 
 data DbUser = DbUser

@@ -1,19 +1,20 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module WebAPI.Users.Get
   ( Dependencies
-  , GetUser, getUser
+  , GetMe, getMe
   , UserResp(..), toResp
   ) where
 
-import Servant (ServerT, (:>), JSON, Get, Capture, throwError, err404, ServerError)
+import Servant (ServerT, JSON, Get, throwError, ServerError, err400)
 import Data.Aeson (ToJSON)
 import Data.UUID (UUID)
 import Optics ((^?), (%), to, (<&>), (&))
@@ -21,7 +22,7 @@ import Control.Monad.Error.Class (MonadError)
 
 import GHC.Generics (Generic)
 
-import SmartPrimitives.TextLenRange (TextLenRange)
+import SmartPrimitives.TextLenRange (TextLenRange, mkTextLenRange)
 import Core.Common.Operators ((^^.))
 import Core.Users.Domain.UserType (UserType(Single))
 import Core.Users.Domain.User (User)
@@ -29,9 +30,12 @@ import Core.Users.Domain.UserId (UserId(UserId))
 import qualified Core.Users.Get as Impl (get, Dependencies)
 import WebAPI.Users.Budget.Get (BudgetResp)
 import qualified WebAPI.Users.Budget.Get as Budget (toResp)
+import WebAPI.Auth (AuthenticatedUser (..))
+import Core.Users.CreateExistingSingle (createExistingSingle)
+import Core.Users.Domain.Primitives (Username(Username))
 
-type GetUser =
-  Capture "userId" UUID :> Get '[JSON] UserResp
+type GetMe =
+  Get '[JSON] UserResp
 
 data UserResp = UserResp
   { userId :: UUID
@@ -40,12 +44,16 @@ data UserResp = UserResp
   } deriving (Generic, ToJSON)
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
-getUser :: Dependencies m => ServerT GetUser m
-getUser userId = userId
+getMe :: Dependencies m => AuthenticatedUser -> ServerT GetMe m
+getMe AUser{ userId, username } = userId
    &  UserId
    &  Impl.get
   <&> fmap toResp
-  >>= maybe (throwError err404) return
+  >>= maybe createMe return
+  where
+    createMe = case Username <$> mkTextLenRange username of
+      Left _ -> throwError err400
+      Right username' -> toResp <$> createExistingSingle (UserId userId) username'
 
 toResp :: User 'Single -> UserResp
 toResp user = UserResp

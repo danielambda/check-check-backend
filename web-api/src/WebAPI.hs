@@ -20,7 +20,7 @@ import WebAPI.Auth (getJwtSettings)
 
 type API
   =    "receipts" :> ReceiptsAPI
-  :<|> "users" :> UsersAPI
+  :<|> UsersAPI
 
 server :: ServerT API AppM
 server

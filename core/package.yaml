@@ -20,6 +20,7 @@ library:
     - Core.Users.Domain.Primitives
     - Core.Users.MonadClasses.Repository
     - Core.Users.CreateSingle
+    - Core.Users.CreateExistingSingle
     - Core.Users.CreateGroup
     - Core.Users.Get
 

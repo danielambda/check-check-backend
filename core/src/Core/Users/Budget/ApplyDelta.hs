@@ -4,9 +4,7 @@
 
 module Core.Users.Budget.ApplyDelta (Dependencies, applyBudgetDeltaToUser, Error(..)) where
 
-import Optics ((%), (^.), (^?), (.~), (&))
-
-import Data.Functor (void)
+import Optics ((%), (^?), (.~), (&))
 
 import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.UserId (SomeUserId)
