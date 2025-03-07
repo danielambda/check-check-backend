@@ -9,7 +9,6 @@ import Core.Users.MonadClasses.Repository (UsersRepository (addUserToRepo))
 import Core.Users.Domain.Primitives (Username)
 import Core.Common.Operators ((*>>))
 
-createExistingSingle :: UsersRepository m
-                     => UserId 'Single -> Username -> m (User 'Single)
+createExistingSingle :: UsersRepository m => UserId 'Single -> Username -> m (User 'Single)
 createExistingSingle userId username =
   addUserToRepo *>> return $ UserSingle userId $ UserData username Nothing

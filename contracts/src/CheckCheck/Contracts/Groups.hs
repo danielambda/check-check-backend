@@ -6,13 +6,14 @@
 
 module CheckCheck.Contracts.Groups
   ( GroupsAPI
-  , GetGroup
   , CreateGroup
+  , GetGroup
+  , GetAllGroups
   , CreateGroupReqBody(..)
   , GroupResp(..)
   ) where
 
-import Servant.API ((:>), (:<|>), Capture, Get, JSON, ReqBody)
+import Servant.API ((:>), (:<|>), Capture, Get, Post, JSON, ReqBody)
 import CheckCheck.Contracts.Users.Budget (BudgetAPI, BudgetResp)
 import CheckCheck.Contracts.Users.OutgoingRequests (OutgoingRequestsAPI)
 import CheckCheck.Contracts.Users.IncomingRequests (IncomingRequestsAPI)
@@ -22,24 +23,29 @@ import SmartPrimitives.TextLenRange (TextLenRange)
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON, FromJSON)
 
-type GroupsAPI
-  =    Authenticated :> Capture "groupId" UUID
+type GroupsAPI = Authenticated
+  :> ( Capture "groupId" UUID
     :> ( "outgoing-requests" :> OutgoingRequestsAPI
     :<|> "incoming-requests" :> IncomingRequestsAPI
     :<|> "budget" :> BudgetAPI
     )
-  :<|> GetGroup
   :<|> CreateGroup
+  :<|> GetGroup
+  :<|> GetAllGroups
+  )
+
+type CreateGroup =
+  ReqBody '[JSON] CreateGroupReqBody :> Post '[JSON] GroupResp
 
 type GetGroup =
   Capture "groupId" UUID :> Get '[JSON] GroupResp
 
-type CreateGroup =
-  ReqBody '[JSON] CreateGroupReqBody :> Get '[JSON] GroupResp
+type GetAllGroups =
+  Get '[JSON] [GroupResp]
 
 data CreateGroupReqBody = CreateGroupReqBody
   { name :: TextLenRange 2 50
-  , otherUserIds :: [UUID]
+  , otherUserIds :: Maybe [UUID]
   } deriving (Generic, ToJSON, FromJSON)
 
 data GroupResp = GroupResp

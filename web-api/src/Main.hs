@@ -8,7 +8,7 @@ import Network.Wai.Handler.Warp
   (defaultSettings, setPort, setBeforeMainLoop, runSettings)
 import Network.Wai.Middleware.Cors
   (cors, simpleCorsResourcePolicy, corsMethods, corsOrigins, corsRequestHeaders)
-import Data.ByteString.Char8 as B (pack)
+import Data.ByteString.Char8 as BS8 (pack)
 import Data.Pool (Pool, newPool, defaultPoolConfig, destroyAllResources)
 
 import System.IO (hPutStrLn, stderr)
@@ -26,21 +26,22 @@ main :: IO ()
 main = do
   loadFile defaultConfig
 
-  pgConn <- PG.connectPostgreSQL . B.pack <$> getEnv "POSTGRESQL_CONNECTION_STRING"
+  pgConn <- PG.connectPostgreSQL . BS8.pack <$> getEnv "POSTGRESQL_CONNECTION_STRING"
   pgConnPool <- newPool $ defaultPoolConfig pgConn PG.close
-                      20 -- Keepalive time (seconds)
-                      50 -- Max resourcesction is kept
-  redisConn <- undefined Redis.connect
-  -- redisConnPool <- newPool $ defaultPoolConfig
-
-  runAPI pgConnPool redisConn
+                            20 -- Keepalive time (seconds)
+                            50 -- Max resourcesction is kept
+  -- redisConnPool <- newPool $ defaultPoolConfig undefined undefined
+  --                     20 -- Keepalive time (seconds)
+  --                     50 -- Max resourcesction is kept
+  runAPI pgConnPool undefined
     `finally` do
       destroyAllResources pgConnPool
-      destroyAllResources redisConn
+      -- destroyAllResources redisConnPool
 
 runAPI :: Pool PG.Connection -> Pool Redis.Connection -> IO ()
 runAPI pgConnPool redisConnPool = do
-  app <- corsPolicy <$> mkApp Env{..}
+  let middlewares = corsMiddleware
+  app <- middlewares <$> mkApp Env{..}
   runSettings settings app
   where
     port = 8080
@@ -48,7 +49,7 @@ runAPI pgConnPool redisConnPool = do
       & setPort port
       & setBeforeMainLoop (hPutStrLn stderr $ "listening on port "<>show port)
 
-    corsPolicy = cors $ const $ Just $ simpleCorsResourcePolicy
+    corsMiddleware = cors $ const $ Just $ simpleCorsResourcePolicy
       { corsOrigins = Just (["http://localhost:3000"], True)
       , corsMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
       , corsRequestHeaders = ["Authorization", "Content-Type"]

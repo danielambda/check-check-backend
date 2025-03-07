@@ -8,14 +8,13 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module WebAPI.Users.IncomingRequests.Complete
+module WebAPI.Groups.IncomingRequests.Complete
   ( Dependencies
-  , CompleteIncomingRequest
   , completeIncomingRequest
   ) where
 
 import Servant (HasServer (ServerT), throwError, err404, errBody, err400, ServerError)
-import Data.UUID (toLazyASCIIBytes)
+import Data.UUID (toLazyASCIIBytes, UUID)
 import Optics ((&), (^.))
 import Control.Monad.Error.Class (MonadError)
 
@@ -33,11 +32,12 @@ import CheckCheck.Contracts.Users.IncomingRequests (CompleteIncomingRequestReqBo
 import CheckCheck.Contracts.Users.Budget (BudgetResp(..))
 
 type Dependencies m = (MarkImpl.Dependencies m, PayImpl.Dependencies m, MonadError ServerError m)
-completeIncomingRequest :: Dependencies m => AuthenticatedUser -> ServerT CompleteIncomingRequest m
-completeIncomingRequest AUser{ userId } requestId = \case
+completeIncomingRequest :: Dependencies m
+                        => AuthenticatedUser -> UUID -> ServerT CompleteIncomingRequest m
+completeIncomingRequest AUser{} groupId requestId = \case
   MarkCompletedReqBody -> do
     let data' = MarkImpl.Data
-          { MarkImpl.recipientId = userId & SomeUserId
+          { MarkImpl.recipientId = groupId & SomeUserId
           , MarkImpl.requestId = requestId & RequestId
           }
     MarkImpl.markRequestCompleted data' >>= \case
@@ -54,7 +54,7 @@ completeIncomingRequest AUser{ userId } requestId = \case
           <$> fmap positiveRubKopecks roundingEps
           <*> fmap mapRoundingStrategy roundingStrategy
     let data' = PayImpl.Data
-          { PayImpl.recipientId = userId & SomeUserId
+          { PayImpl.recipientId = groupId & SomeUserId
           , PayImpl.requestId = requestId & RequestId
           , PayImpl.mRoundingData = mRoundingData
           }

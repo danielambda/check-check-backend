@@ -29,6 +29,7 @@ library
       Core.Users.CreateGroup
       Core.Users.GetSingle
       Core.Users.GetGroup
+      Core.Users.GetAllGroups
       Core.Users.Budget.Domain.Budget
       Core.Users.Budget.Create
       Core.Users.Budget.ApplyDelta

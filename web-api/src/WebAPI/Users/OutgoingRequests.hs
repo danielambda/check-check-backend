@@ -1,16 +1,15 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module WebAPI.Users.OutgoingRequests (OutgoingRequestsAPI, requestsServer, Dependencies) where
+module WebAPI.Users.OutgoingRequests (outgoingRequestsServer, Dependencies) where
 
 import Servant (ServerT)
 
-import WebAPI.Auth (AuthenticatedUser)
+import CheckCheck.Contracts.Users (AuthenticatedUser)
+import CheckCheck.Contracts.Users.OutgoingRequests (OutgoingRequestsAPI)
 import qualified WebAPI.Users.OutgoingRequests.Send as Send (Dependencies)
-import WebAPI.Users.OutgoingRequests.Send (SendRequest, sendRequest)
-
-type OutgoingRequestsAPI = SendRequest
+import WebAPI.Users.OutgoingRequests.Send (sendRequest)
 
 type Dependencies m = (Send.Dependencies m)
-requestsServer :: Dependencies m => AuthenticatedUser -> ServerT SendRequest m
-requestsServer = sendRequest
+outgoingRequestsServer :: Dependencies m => AuthenticatedUser -> ServerT OutgoingRequestsAPI m
+outgoingRequestsServer = sendRequest

@@ -4,13 +4,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module WebAPI.Users.Budget.ApplyDelta
+module WebAPI.Groups.Budget.ApplyDelta
   ( Dependencies
   , applyBudgetDeltaToUser
   ) where
 
 import Servant (HasServer(ServerT), err404, ServerError, err400, errBody)
-import Data.UUID (toLazyASCIIBytes)
+import Data.UUID (toLazyASCIIBytes, UUID)
 import Control.Monad.Error.Class (MonadError(throwError))
 
 import Core.Common.Domain.RubKopecks (RubKopecks (..))
@@ -22,9 +22,9 @@ import CheckCheck.Contracts.Users.Budget (ApplyBudgetDeltaToUser)
 import CheckCheck.Contracts.Users (AuthenticatedUser(..))
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
-applyBudgetDeltaToUser :: Dependencies m => AuthenticatedUser -> ServerT ApplyBudgetDeltaToUser m
-applyBudgetDeltaToUser AUser{ userId } delta =
-  Impl.applyBudgetDeltaToUser (SomeUserId userId) (RubKopecks delta) >>= \case
+applyBudgetDeltaToUser :: Dependencies m => AuthenticatedUser -> UUID -> ServerT ApplyBudgetDeltaToUser m
+applyBudgetDeltaToUser AUser{ userId } groupId delta =
+  Impl.applyBudgetDeltaToUser (SomeUserId groupId) (RubKopecks delta) >>= \case
     Right budget ->
       return $ toResp budget
     Left (Impl.UserDoesNotExist(SomeUserId uuid)) ->

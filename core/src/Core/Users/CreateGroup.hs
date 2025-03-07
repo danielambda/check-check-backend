@@ -32,7 +32,7 @@ newtype Error = NonExistingGroupMembers (NonEmpty (UserId 'Single))
 type Dependencies m = (UsersRepository m, MonadUUID m)
 createGroup :: Dependencies m => Data -> m (Either Error (User 'Group))
 createGroup Data{ name, ownerId, otherUserIds } = do
-  mNonExistingUserIds <- filterM (userExistsInRepo . someUserId) (ownerId:otherUserIds)
+  mNonExistingUserIds <- filterM (fmap not . userExistsInRepo . someUserId) (ownerId:otherUserIds)
   case nonEmpty mNonExistingUserIds of
     Just userIds ->
       return $ Left $ NonExistingGroupMembers userIds

@@ -1,6 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -10,40 +8,24 @@
 
 module WebAPI.Users.Get
   ( Dependencies
-  , GetMe, getMe
+  , getMe
   , UserResp(..), toResp
   ) where
 
-import Servant (ServerT, JSON, Get, throwError, ServerError, err400)
-import Data.Aeson (ToJSON)
-import Data.UUID (UUID)
+import Servant (ServerT)
 import Optics ((^?), (%), to, (<&>), (&))
-import Control.Monad.Error.Class (MonadError)
 
-import GHC.Generics (Generic)
-
-import SmartPrimitives.TextLenRange (TextLenRange, mkTextLenRange)
 import Core.Common.Operators ((^^.))
 import Core.Users.Domain.UserType (UserType(Single))
 import Core.Users.Domain.User (User)
 import Core.Users.Domain.UserId (UserId(UserId))
 import qualified Core.Users.GetSingle as Impl (getSingle, Dependencies)
-import WebAPI.Users.Budget.Get (BudgetResp)
 import qualified WebAPI.Users.Budget.Get as Budget (toResp)
-import WebAPI.Auth (AuthenticatedUser (..))
 import Core.Users.CreateExistingSingle (createExistingSingle)
 import Core.Users.Domain.Primitives (Username(Username))
+import CheckCheck.Contracts.Users (GetMe, UserResp (..), AuthenticatedUser (..))
 
-type GetMe =
-  Get '[JSON] UserResp
-
-data UserResp = UserResp
-  { userId :: UUID
-  , username :: TextLenRange 2 50
-  , budget :: Maybe BudgetResp
-  } deriving (Generic, ToJSON)
-
-type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
+type Dependencies m = (Impl.Dependencies m)
 getMe :: Dependencies m => AuthenticatedUser -> ServerT GetMe m
 getMe AUser{ userId, username } = userId
    &  UserId
@@ -51,9 +33,8 @@ getMe AUser{ userId, username } = userId
   <&> fmap toResp
   >>= maybe createMe return
   where
-    createMe = case Username <$> mkTextLenRange username of
-      Left _ -> throwError err400
-      Right username' -> toResp <$> createExistingSingle (UserId userId) username'
+    createMe =
+      toResp <$> createExistingSingle (UserId userId) (Username username)
 
 toResp :: User 'Single -> UserResp
 toResp user = UserResp

@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 
 module WebAPI (mkApp) where
 
@@ -7,24 +6,23 @@ import Servant.Auth.Server (defaultCookieSettings)
 import Servant
   ( Handler, Application, Proxy(..)
   , ServerT
-  , (:<|>)((:<|>)), (:>)
+  , (:<|>)((:<|>))
   , serveWithContextT
   , Context (..)
   )
 import Control.Monad.Reader (runReaderT)
 
-import WebAPI.Receipts (ReceiptsAPI, receiptsServer)
-import WebAPI.Users (UsersAPI, usersServer)
+import CheckCheck.Contracts.API (API)
+import WebAPI.Receipts (receiptsServer)
+import WebAPI.Users (usersServer)
 import WebAPI.AppM (AppM(runAppM), Env)
 import WebAPI.Auth (getJwtSettings)
-
-type API
-  =    "receipts" :> ReceiptsAPI
-  :<|> UsersAPI
+import WebAPI.Groups (groupsServer)
 
 server :: ServerT API AppM
 server
   =    receiptsServer
+  :<|> groupsServer
   :<|> usersServer
 
 mkApp :: Env -> IO Application

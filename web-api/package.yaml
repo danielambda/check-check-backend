@@ -5,6 +5,7 @@ executable:
   source-dirs: src
 
   dependencies:
+  - contracts
   - core
   - infrastructure
   - smart-primitives

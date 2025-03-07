@@ -1,24 +1,43 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
 
-module WebAPI.Groups (GroupsAPI, Dependencies, groupsServer) where
+module WebAPI.Groups (Dependencies, groupsServer) where
 
 import Servant (HasServer(ServerT), (:<|>) ((:<|>)))
 
-import WebAPI.Auth (AuthenticatedUser)
-import WebAPI.Groups.Get (GetGroup, getGroup)
-import qualified WebAPI.Groups.Get as Get (Dependencies)
-import WebAPI.Groups.Create (CreateGroup, createGroup)
+import WebAPI.Groups.Create ( createGroup)
 import qualified WebAPI.Groups.Create as Create (Dependencies)
+import WebAPI.Groups.Get (getGroup)
+import qualified WebAPI.Groups.Get as Get (Dependencies)
+import WebAPI.Groups.GetAll (getAllGroups)
+import qualified WebAPI.Groups.GetAll as GetAll (Dependencies)
+import CheckCheck.Contracts.Groups (GroupsAPI)
+import Servant.Auth.Server (AuthResult(Authenticated))
+import WebAPI.Groups.OutgoingRequests (outgoingRequestsServer)
+import qualified WebAPI.Groups.OutgoingRequests as OutgoingRequest (Dependencies)
+import WebAPI.Groups.IncomingRequests (incomingRequestsServer)
+import qualified WebAPI.Groups.IncomingRequests as IncomingRequest (Dependencies)
+import WebAPI.Groups.Budget (budgetServer)
+import qualified WebAPI.Groups.Budget as Budget (Dependencies)
 
-type GroupsAPI
-  =    GetGroup
-  :<|> CreateGroup
-
-type Dependencies m = (Get.Dependencies m, Create.Dependencies m)
-groupsServer :: Dependencies m => AuthenticatedUser -> ServerT GroupsAPI m
-groupsServer user
-  =    getGroup user
+type Dependencies m =
+  ( Get.Dependencies m
+  , Create.Dependencies m
+  , GetAll.Dependencies m
+  , OutgoingRequest.Dependencies m
+  , IncomingRequest.Dependencies m
+  , Budget.Dependencies m
+  )
+groupsServer :: Dependencies m => ServerT GroupsAPI m
+groupsServer (Authenticated user)
+  =   (\groupId
+    ->   outgoingRequestsServer user groupId
+    :<|> incomingRequestsServer user groupId
+    :<|> budgetServer user groupId
+    )
   :<|> createGroup user
+  :<|> getGroup user
+  :<|> getAllGroups user
+
+groupsServer _ = error "unauthorized 401"
 

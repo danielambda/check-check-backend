@@ -15,8 +15,17 @@ executable web-api
       WebAPI.AppM
       WebAPI.Auth
       WebAPI.Groups
+      WebAPI.Groups.Budget
+      WebAPI.Groups.Budget.ApplyDelta
+      WebAPI.Groups.Budget.Create
       WebAPI.Groups.Create
       WebAPI.Groups.Get
+      WebAPI.Groups.GetAll
+      WebAPI.Groups.IncomingRequests
+      WebAPI.Groups.IncomingRequests.Complete
+      WebAPI.Groups.IncomingRequests.GetMany
+      WebAPI.Groups.OutgoingRequests
+      WebAPI.Groups.OutgoingRequests.Send
       WebAPI.Receipts
       WebAPI.Receipts.Get
       WebAPI.Users
@@ -40,6 +49,7 @@ executable web-api
     , base
     , base64-bytestring
     , bytestring
+    , contracts
     , core
     , dotenv
     , hedis

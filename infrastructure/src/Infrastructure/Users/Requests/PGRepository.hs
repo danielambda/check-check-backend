@@ -33,7 +33,7 @@ import GHC.Generics (Generic)
 import Data.Data (Typeable)
 import Data.String (IsString(fromString))
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty (append, singleton)
+import qualified Data.List.NonEmpty as NonEmpty (singleton)
 
 import SmartPrimitives.Positive (Positive)
 import Core.Common.Operators ((^^.))
@@ -93,7 +93,7 @@ getIncomingRequestsFromDb (SomeUserId recipientId) =
       . map processTuple
       where
         merge (request, items1) (_, items2) =
-          (request, NonEmpty.append items1 items2)
+          (request, items1 <> items2)
         processTuple ( requestId, senderId, createdAt, isPending
                                 , identityTag, identityContents
                                 , quantity, price

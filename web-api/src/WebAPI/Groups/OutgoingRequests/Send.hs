@@ -11,15 +11,15 @@
 
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
-module WebAPI.Users.OutgoingRequests.Send
+module WebAPI.Groups.OutgoingRequests.Send
   ( Dependencies
   , SendRequestReqBody
   , SendRequest, sendRequest
   ) where
 
 import Servant (ServerT, throwError, err404, ServerError, errBody, err400)
-import Data.UUID (toLazyASCIIBytes)
-import Data.Text as T
+import Data.UUID (toLazyASCIIBytes, UUID)
+import qualified Data.Text as T
 import Control.Monad.Except (MonadError)
 import Optics ((^.), (<&>), (&))
 
@@ -46,10 +46,11 @@ type Dependencies m =
   , ReceiptItemsImpl.Dependencies m
   , MonadError ServerError m
   )
-sendRequest :: Dependencies m => AuthenticatedUser -> ServerT SendRequest m
-sendRequest AUser{ userId } SendListRequestReqBody{ recipientId, list } = do
+sendRequest :: Dependencies m => AuthenticatedUser -> UUID -> ServerT SendRequest m
+sendRequest AUser{} groupId SendListRequestReqBody{ recipientId, list } = do
+  -- TODO check somewhere that the user is a part of the group
   let data' = ListImpl.Data
-        { senderId = userId & SomeUserId
+        { senderId = groupId & SomeUserId
         , recipientId = recipientId & SomeUserId
         , list = list <&> \SendListRequestItemReqBody{..} -> ListImpl.Item
           { price = positiveRubKopecks price, ..}
@@ -59,9 +60,9 @@ sendRequest AUser{ userId } SendListRequestReqBody{ recipientId, list } = do
     Left (ListImpl.UserDoesNotExist (SomeUserId uuid)) ->
       throwError err404{ errBody = toLazyASCIIBytes uuid }
 
-sendRequest AUser{ userId } SendReceiptItemsRequestReqBody{ receiptQr, indexSelections } = do
+sendRequest AUser{} groupId SendReceiptItemsRequestReqBody{ receiptQr, indexSelections } = do
   let data' = ReceiptItemsImpl.Data
-        { senderId = userId & SomeUserId
+        { senderId = groupId & SomeUserId
         , indexSelections = indexSelections <&> \IndexSelectionReqBody{..} ->
             ReceiptItemsImpl.IndexSelection{ recipientId = recipientId & SomeUserId, .. }
         , ..

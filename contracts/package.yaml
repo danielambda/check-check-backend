@@ -4,6 +4,12 @@ library:
   source-dirs: src
   exposed-modules:
     - CheckCheck.Contracts.API
+    - CheckCheck.Contracts.Users
+    - CheckCheck.Contracts.Users.Budget
+    - CheckCheck.Contracts.Users.OutgoingRequests
+    - CheckCheck.Contracts.Users.IncomingRequests
+    - CheckCheck.Contracts.Groups
+    - CheckCheck.Contracts.Receipts
 
   dependencies:
   - smart-primitives

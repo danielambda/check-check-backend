@@ -1,24 +1,14 @@
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 module WebAPI.Users.Budget.Get
-  ( BudgetResp(..), toResp
+  ( toResp
   ) where
 
-import Data.Aeson (ToJSON)
 import Optics ((^.))
-
-import GHC.Generics (Generic)
 
 import Core.Common.Operators ((^^.), (^^?))
 import Core.Users.Budget.Domain.Budget (Budget, BudgetLowerBoundStatus (BudgetLowerBoundExceeded))
-
-data BudgetResp = BudgetResp
-  { amount :: Integer
-  , lowerBound :: Maybe Integer
-  , isLowerBoundExceeded :: Bool
-  } deriving (Generic, ToJSON)
+import CheckCheck.Contracts.Users.Budget (BudgetResp (..))
 
 toResp :: Budget -> BudgetResp
 toResp budget = BudgetResp

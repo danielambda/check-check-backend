@@ -14,7 +14,6 @@ module CheckCheck.Contracts.Users
 
 import Servant.Auth (Auth, JWT)
 import Data.UUID (UUID)
-import Data.Text (Text)
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
 import Servant.Auth.JWT (FromJWT, ToJWT)
@@ -28,7 +27,7 @@ type Authenticated = Auth '[JWT] AuthenticatedUser
 
 data AuthenticatedUser = AUser
   { userId :: UUID
-  , username :: Text
+  , username :: TextLenRange 2 50
   } deriving (Generic, FromJSON, ToJSON, FromJWT, ToJWT)
 
 type UsersAPI = Authenticated

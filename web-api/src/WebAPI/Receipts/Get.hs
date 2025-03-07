@@ -1,8 +1,4 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -14,32 +10,15 @@ module WebAPI.Receipts.Get
   , ReceiptResp, ReceiptItemResp
   ) where
 
-import Servant (ServerT, Capture, (:>), JSON, Get, err404, ServerError)
-import Data.Aeson (ToJSON)
-import Data.Text (Text)
+import Servant (ServerT, err404, ServerError)
 import Optics ((^.), toListOf, (<&>), (&), (%))
 
-import GHC.Generics (Generic)
 import Control.Monad.Error.Class (throwError, MonadError)
 
+import CheckCheck.Contracts.Receipts (GetReceipt, ReceiptResp (ReceiptResp), ReceiptItemResp (..))
 import Core.Receipts.Domain.Receipt (Receipt, receiptItems)
 import Core.Receipts.Domain.ReceiptItem (ReceiptItem)
 import qualified Core.Receipts.Get as Impl (get, Dependencies)
-import SmartPrimitives.Positive (Positive)
-
-type GetReceipt =
-  Capture "qr" Text :> Get '[JSON] ReceiptResp
-
-newtype ReceiptResp = ReceiptResp
- { items :: [ReceiptItemResp]
- } deriving (Generic, ToJSON)
-
-data ReceiptItemResp = ReceiptItemResp
-  { index :: Int
-  , name :: Text
-  , quantity :: Positive Double
-  , price :: Positive Integer
-  } deriving (Generic, ToJSON)
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
 getReceipt :: Dependencies m => ServerT GetReceipt m

@@ -25,6 +25,7 @@ import Database.PostgreSQL.Simple (ToRow, Only (..), FromRow)
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Data.UUID (UUID)
 import Optics ((^.), (%), (^?), (^..))
+import qualified Data.HashMap.Strict as HashMap (elems, fromListWith)
 
 import Data.Maybe (fromJust)
 import Data.Typeable (type (:~:)(Refl), Typeable, eqT)
@@ -53,6 +54,8 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   getSomeUserFromRepo = getSomeUserFromDb
   userExistsInRepo = userExistsInDb
   updateSomeUserInRepo = updateSomeUserInDb
+  getGroupsOwnedByFromRepo = getGroupsOwnedByFromDb
+  getGroupsParticipatedByFromRepo = getGroupsParticipatedByFromDb
 
   getUserFromRepo :: forall t m0. (MonadIO m0, MonadConnReader m0, Typeable t)
                   => UserId t -> UsersRepositoryT m0 (Maybe (User t))
@@ -133,6 +136,56 @@ updateSomeUserInDb (SomeUser user) = do
     forM_ mDbBudget $ execute [sql|
       INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
     |]
+
+getGroupsOwnedByFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [User 'Group]
+getGroupsOwnedByFromDb (UserId ownerId) =
+  map (\(x, y, z) -> toDomainGroup x y z) . normalize <$> query [sql|
+    SELECT userId, username, amount, lowerBound, userSingleId
+    FROM users
+    NATURAL LEFT JOIN budgets
+    LEFT JOIN otherUserIds ON userId = userGroupId
+    WHERE ownerId = ?
+  |] (Only ownerId)
+  where
+    normalize
+      = HashMap.elems
+      . HashMap.fromListWith merge
+      . map processTuple
+      where
+        merge (group, budget, items1) (_, _, items2) =
+          (group, budget, items1 <> items2)
+        processTuple (userId, username, amount, lowerBound, userSingleId) =
+          ( userId
+          , ( DbUser{ isGroup = True, ownerId = Just ownerId, ..}
+            , DbBudget ownerId <$> amount <*> lowerBound
+            , [OtherUserIdRelation{userGroupId = userId, ..}]
+            )
+          )
+
+getGroupsParticipatedByFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [User 'Group]
+getGroupsParticipatedByFromDb (UserId userSingleId) =
+  map (\(x, y, z) -> toDomainGroup x y z) . normalize <$> query [sql|
+    SELECT userId, username, amount, lowerBound, ownerId
+    FROM users
+    NATURAL LEFT JOIN budgets
+    LEFT JOIN otherUserIds ON userId = userGroupId
+    WHERE ownerId = ?
+  |] (Only userSingleId)
+  where
+    normalize
+      = HashMap.elems
+      . HashMap.fromListWith merge
+      . map processTuple
+      where
+        merge (group, budget, items1) (_, _, items2) =
+          (group, budget, items1 <> items2)
+        processTuple (userId, username, amount, lowerBound, ownerId) =
+          ( userId
+          , ( DbUser{ isGroup = True, ownerId = Just ownerId, ..}
+            , DbBudget ownerId <$> amount <*> lowerBound
+            , [OtherUserIdRelation{userGroupId = userId, ..}]
+            )
+          )
 
 toDb :: User t -> (DbUser, Maybe DbBudget, [OtherUserIdRelation])
 toDb user =
