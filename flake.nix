@@ -13,7 +13,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        hPkgs = pkgs.haskell.packages.ghc966;
+        hPkgs = pkgs.haskell.packages.ghc983;
 
         packages = [
           pkgs.nixd

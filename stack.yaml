@@ -5,11 +5,12 @@ nix:
     - zlib.out
     - postgresql_17
 
-snapshot: lts-22.43
+snapshot: nightly-2024-12-04
 
 packages:
 - contracts
 - web-api
+- telegram-bot
 - infrastructure
 - core
 - smart-primitives
