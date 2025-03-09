@@ -9,10 +9,13 @@ executable:
   - smart-primitives
 
   - base
+  - containers
   - telegram-bot-simple
   - telegram-bot-api
   - http-client
+  - servant
   - servant-client
+  - servant-client-core
   - servant-auth
   - servant-auth-client
   - aeson

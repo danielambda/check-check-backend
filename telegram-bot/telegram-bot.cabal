@@ -19,6 +19,7 @@ executable telegram-bot
       aeson
     , base
     , bytestring
+    , containers
     , contracts
     , dotenv
     , http-client
@@ -26,9 +27,11 @@ executable telegram-bot
     , mtl
     , optics
     , resource-pool
+    , servant
     , servant-auth
     , servant-auth-client
     , servant-client
+    , servant-client-core
     , smart-primitives
     , telegram-bot-api
     , telegram-bot-simple

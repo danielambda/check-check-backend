@@ -30,14 +30,14 @@ type Dependencies m =
   )
 groupsServer :: Dependencies m => ServerT GroupsAPI m
 groupsServer (Authenticated user)
-  =   (\groupId
-    ->   outgoingRequestsServer user groupId
-    :<|> incomingRequestsServer user groupId
-    :<|> budgetServer user groupId
-    )
-  :<|> createGroup user
+  =    createGroup user
   :<|> getGroup user
   :<|> getAllGroups user
+  :<|> (\groupId
+       ->   outgoingRequestsServer user groupId
+       :<|> incomingRequestsServer user groupId
+       :<|> budgetServer user groupId
+       )
 
 groupsServer _ = error "unauthorized 401"
 

@@ -31,10 +31,10 @@ data AuthenticatedUser = AUser
   } deriving (Generic, FromJSON, ToJSON, FromJWT, ToJWT)
 
 type UsersAPI = Authenticated
-  :> ( "outgoing-requests" :> OutgoingRequestsAPI
+  :> ( "me" :> GetMe
+  :<|> "outgoing-requests" :> OutgoingRequestsAPI
   :<|> "incoming-requests" :> IncomingRequestsAPI
   :<|> "budget" :> BudgetAPI
-  :<|> "me" :> GetMe
   )
 
 type GetMe =

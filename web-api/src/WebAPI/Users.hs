@@ -22,8 +22,8 @@ type Dependencies m =
   )
 usersServer :: (Dependencies m) => ServerT UsersAPI m
 usersServer (Authenticated user)
-  =    outgoingRequestsServer user
+  =    getMe user
+  :<|> outgoingRequestsServer user
   :<|> incomingRequestsServer user
   :<|> budgetServer user
-  :<|> getMe user
 usersServer _ = error "Unauthorized but I do now know how to make this 401"

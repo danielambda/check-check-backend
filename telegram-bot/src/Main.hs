@@ -5,12 +5,13 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Main (main) where
 
 import Telegram.Bot.API
-  ( BotName(..), Update, Token , defaultTelegramClientEnv , userUsername
-  , responseResult, getMe, SomeReplyMarkup (SomeInlineKeyboardMarkup), InlineKeyboardMarkup (..)
+  ( BotName(..), Update, defaultTelegramClientEnv , userUsername
+  , responseResult, SomeReplyMarkup (SomeInlineKeyboardMarkup), InlineKeyboardMarkup (..)
   , updateChatId
   )
 import Telegram.Bot.Simple
@@ -25,7 +26,7 @@ import Servant.Client (runClientM, ClientM, client, mkClientEnv, Scheme (Http), 
 
 import qualified Data.Text as T
 
-import CheckCheck.Contracts.Receipts (ReceiptsAPI, ReceiptResp (..), ReceiptItemResp (..))
+import CheckCheck.Contracts.Receipts (ReceiptResp (..), ReceiptItemResp (..))
 import Control.Applicative ((<|>))
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask))
@@ -35,9 +36,43 @@ import Data.Functor ((<&>))
 import Data.Proxy (Proxy(..))
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import SmartPrimitives.Positive (pattern Positive)
+import CheckCheck.Contracts.API (API)
+import Servant.API ((:<|>)(..))
+import Servant.Auth.Client (Token)
+import CheckCheck.Contracts.Groups (CreateGroupReqBody, GroupResp)
+import Data.UUID (UUID)
+import qualified Telegram.Bot.API as TG
+import CheckCheck.Contracts.Users (UserResp)
 
-getReceipt :: Text -> ClientM ReceiptResp
-getReceipt = client $ Proxy @ReceiptsAPI
+data ApiClient = ApiClient
+  { getReceipt :: Text -> ClientM ReceiptResp
+  , mkGroupsClient :: Token -> GroupsClient
+  , mkUsersClient :: Token -> UsersClient
+  }
+
+data GroupsClient = GroupsClient
+  { createGroup :: CreateGroupReqBody -> ClientM GroupResp
+  , getGroup :: UUID -> ClientM GroupResp
+  , getAllGroups :: ClientM [GroupResp]
+  }
+
+data UsersClient = UsersClient
+  { getMe :: ClientM UserResp
+  , aboba :: Int
+  }
+
+mkApiClient :: ApiClient
+mkApiClient = ApiClient{..}
+  where
+    getReceipt :<|> groupsClient :<|> usersClient = client $ Proxy @API
+
+    mkGroupsClient token = GroupsClient{..}
+      where
+        createGroup :<|> getGroup :<|> getAllGroups :<|> _ = groupsClient token
+
+    mkUsersClient token = UsersClient{..}
+      where
+        getMe :<|> _ = usersClient token
 
 data State
   = InitialState
@@ -121,6 +156,7 @@ decideTransition (BotName botName) state = parseUpdate parser
 handleTransition :: Transition -> State -> Eff' Transition State
 handleTransition transition InitialState = case transition of
   ShowReceipt qr -> SelectingReceiptItems qr [] <# do
+    let ApiClient{ getReceipt } = mkApiClient
     runReq (getReceipt qr) >>= \case
       Left err -> liftIO $ putStrLn $ "Error: " <> show err
       Right (ReceiptResp items) -> do
@@ -141,6 +177,7 @@ handleTransition action (SelectingReceiptItems qr indices) = case action of
   SelectReceiptItem index ->
     let indices' = index:indices in
     SelectingReceiptItems qr indices' <# do
+    let ApiClient{ getReceipt } = mkApiClient
     runReq (getReceipt qr) >>= \case
       Left err -> liftIO $ putStrLn $ "Error: " <> show err
       Right (ReceiptResp items) -> do
@@ -159,6 +196,7 @@ handleTransition action (SelectingReceiptItems qr indices) = case action of
               }
         tg $ editUpdateMessage editMessage'
   FinishSelectingReceiptItems -> InitialState <# do
+    let ApiClient{ getReceipt } = mkApiClient
     runReq (getReceipt qr) >>= \case
       Left err -> liftIO $ putStrLn $ "Error: " <> show err
       Right (ReceiptResp items) -> do
@@ -172,14 +210,14 @@ handleTransition action (SelectingReceiptItems qr indices) = case action of
         tg $ replyText $ T.unlines msgLines
   _ -> undefined
 
-run :: Token -> IO ()
+run :: TG.Token -> IO ()
 run token = do
   tgEnv <- defaultTelegramClientEnv token
-  mBotName <- either (error . show) (userUsername . responseResult) <$> runClientM getMe tgEnv
+  mBotName <- either (error . show) (userUsername . responseResult) <$> runClientM TG.getMe tgEnv
   let botName = maybe (error "bot name is not defined") BotName mBotName
 
   manager <- newManager defaultManagerSettings
-  let clientEnv = mkClientEnv manager (BaseUrl Http "localhost" 8080 "receipts")
+  let clientEnv = mkClientEnv manager (BaseUrl Http "localhost" 8080 "")
 
   let botApp = conversationBot updateChatId $ mkBotApp clientEnv botName
   startBot_ botApp tgEnv

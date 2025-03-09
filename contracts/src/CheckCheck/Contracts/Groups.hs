@@ -24,14 +24,14 @@ import GHC.Generics (Generic)
 import Data.Aeson (ToJSON, FromJSON)
 
 type GroupsAPI = Authenticated
-  :> ( Capture "groupId" UUID
-    :> ( "outgoing-requests" :> OutgoingRequestsAPI
-    :<|> "incoming-requests" :> IncomingRequestsAPI
-    :<|> "budget" :> BudgetAPI
-    )
-  :<|> CreateGroup
+  :> ( CreateGroup
   :<|> GetGroup
   :<|> GetAllGroups
+  :<|> Capture "groupId" UUID
+       :> ( "outgoing-requests" :> OutgoingRequestsAPI
+       :<|> "incoming-requests" :> IncomingRequestsAPI
+       :<|> "budget" :> BudgetAPI
+       )
   )
 
 type CreateGroup =
