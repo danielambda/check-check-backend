@@ -4,25 +4,31 @@
 module WebAPI.Users (usersServer) where
 
 import Servant (ServerT, (:<|>)((:<|>)))
+import Servant.Auth.Server (AuthResult(..))
 
-import WebAPI.Users.OutgoingRequests (outgoingRequestsServer)
-import qualified WebAPI.Users.OutgoingRequests as OutgoingRequests (Dependencies)
+import CheckCheck.Contracts.Users (UsersAPI)
 import WebAPI.Users.Get (getMe)
 import qualified WebAPI.Users.Get as Get (Dependencies)
+import WebAPI.Users.GetContacts (getContacts)
+import qualified WebAPI.Users.GetContacts as GetContacts (Dependencies)
 import WebAPI.Users.IncomingRequests (incomingRequestsServer)
 import qualified WebAPI.Users.IncomingRequests as IncomingRequests (Dependencies)
+import WebAPI.Users.OutgoingRequests (outgoingRequestsServer)
+import qualified WebAPI.Users.OutgoingRequests as OutgoingRequests (Dependencies)
 import WebAPI.Users.Budget (budgetServer)
-import CheckCheck.Contracts.Users (UsersAPI)
-import Servant.Auth.Server (AuthResult(..))
+import qualified WebAPI.Users.Budget as Budget (Dependencies)
 
 type Dependencies m =
   ( Get.Dependencies m
+  , GetContacts.Dependencies m
   , OutgoingRequests.Dependencies m
   , IncomingRequests.Dependencies m
+  , Budget.Dependencies m
   )
 usersServer :: (Dependencies m) => ServerT UsersAPI m
 usersServer (Authenticated user)
   =    getMe user
+  :<|> getContacts user
   :<|> outgoingRequestsServer user
   :<|> incomingRequestsServer user
   :<|> budgetServer user

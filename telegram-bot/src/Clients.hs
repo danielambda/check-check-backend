@@ -53,7 +53,7 @@ apiClient = ApiClient{..}
 
     mkUsersClient token = UsersClient{..}
       where
-        getMe :<|> outgoingRequestsClient' :<|> _ = usersClient token
+        getMe :<|> _ :<|> outgoingRequestsClient' :<|> _ = usersClient token
 
         outgoingRequestsClient = OutgointRequestsClient{..}
           where

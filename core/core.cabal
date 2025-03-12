@@ -22,6 +22,7 @@ library
       Core.Users.Domain.User
       Core.Users.Domain.UserId
       Core.Users.Domain.UserType
+      Core.Users.Domain.UserContact
       Core.Users.Domain.Primitives
       Core.Users.MonadClasses.Repository
       Core.Users.CreateSingle
@@ -30,6 +31,7 @@ library
       Core.Users.GetSingle
       Core.Users.GetGroup
       Core.Users.GetAllGroups
+      Core.Users.GetContacts
       Core.Users.Budget.Domain.Budget
       Core.Users.Budget.Create
       Core.Users.Budget.ApplyDelta

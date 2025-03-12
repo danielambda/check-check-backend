@@ -34,6 +34,7 @@ executable web-api
       WebAPI.Users.Budget.Create
       WebAPI.Users.Budget.Get
       WebAPI.Users.Get
+      WebAPI.Users.GetContacts
       WebAPI.Users.IncomingRequests
       WebAPI.Users.IncomingRequests.Complete
       WebAPI.Users.IncomingRequests.GetMany

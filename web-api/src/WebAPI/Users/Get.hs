@@ -6,11 +6,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module WebAPI.Users.Get
-  ( Dependencies
-  , getMe
-  , UserResp(..), toResp
-  ) where
+module WebAPI.Users.Get (Dependencies, getMe, toResp) where
 
 import Servant (ServerT)
 import Optics ((^?), (%), to, (<&>), (&))

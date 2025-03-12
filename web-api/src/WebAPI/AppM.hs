@@ -61,6 +61,9 @@ instance UsersRepository AppM where
   getSomeUserFromRepo = runUsersRepositoryT . getSomeUserFromRepo
   userExistsInRepo = runUsersRepositoryT . userExistsInRepo
   updateSomeUserInRepo = runUsersRepositoryT . updateSomeUserInRepo
+  getContactsFromRepo = runUsersRepositoryT . getContactsFromRepo
+  getGroupsOwnedByFromRepo = runUsersRepositoryT . getGroupsOwnedByFromRepo
+  getGroupsParticipatedByFromRepo = runUsersRepositoryT . getGroupsParticipatedByFromRepo
 
 instance RequestsRepository AppM where
   addRequestToRepo = runRequestsRepositoryT . addRequestToRepo

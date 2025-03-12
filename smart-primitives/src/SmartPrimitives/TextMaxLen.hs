@@ -3,12 +3,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen) where
 
 import Servant (FromHttpApiData, parseUrlPiece)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
-import Data.Aeson (FromJSON (parseJSON))
+import Data.Aeson (FromJSON (parseJSON), ToJSON)
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -17,8 +18,10 @@ import Data.Data (Proxy (Proxy))
 import Data.String (IsString (fromString))
 
 import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
 
 newtype TextMaxLen (n :: Nat) = TextMaxLen Text
+  deriving (ToField, ToJSON)
 
 mkTextMaxLen :: forall n. (KnownNat n) => Text -> Maybe (TextMaxLen n)
 mkTextMaxLen text

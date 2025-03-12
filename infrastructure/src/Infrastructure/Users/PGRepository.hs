@@ -19,6 +19,7 @@ module Infrastructure.Users.PGRepository
   , createUsersTable
   , createBudgetsTable
   , createOtherUserIdsTable
+  , createUserContactsTable
   ) where
 
 import Database.PostgreSQL.Simple (ToRow, Only (..), FromRow)
@@ -41,9 +42,11 @@ import Core.Users.Domain.User (User(..), UserData(..), SomeUser(SomeUser))
 import Core.Users.Domain.Primitives (Username(..))
 import Core.Users.Domain.UserId (UserId (UserId), SomeUserId(SomeUserId))
 import Core.Users.Domain.UserType (UserType(..))
+import Core.Users.Domain.UserContact (UserContact (..))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Infrastructure.Common.Persistence
   (MonadConnReader, execute, executeMany, withTransaction, query, queryMaybe, execute_)
+import SmartPrimitives.TextMaxLen (TextMaxLen)
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }
@@ -56,6 +59,7 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   updateSomeUserInRepo = updateSomeUserInDb
   getGroupsOwnedByFromRepo = getGroupsOwnedByFromDb
   getGroupsParticipatedByFromRepo = getGroupsParticipatedByFromDb
+  getContactsFromRepo = getContactsFromDb
 
   getUserFromRepo :: forall t m0. (MonadIO m0, MonadConnReader m0, Typeable t)
                   => UserId t -> UsersRepositoryT m0 (Maybe (User t))
@@ -187,6 +191,16 @@ getGroupsParticipatedByFromDb (UserId userSingleId) =
             )
           )
 
+getContactsFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [UserContact]
+getContactsFromDb (UserId userId) = map processTuple <$> query [sql|
+  SELECT contactUserId, contactName, username
+  FROM userContacts NATURAL JOIN users
+  WHERE userId = ?
+|] (Only userId)
+  where
+    processTuple (contactUserId, contactName, username) =
+      toDomainContact DbUserContact{..} username
+
 toDb :: User t -> (DbUser, Maybe DbBudget, [OtherUserIdRelation])
 toDb user =
   let
@@ -228,6 +242,13 @@ toDomainGroup DbUser{..} mDbBudget otherUserIds = UserGroup
     { username = Username username
     , mBudget = toDomainBudget <$> mDbBudget
     }
+  }
+
+toDomainContact :: DbUserContact -> TextLenRange 2 50 -> UserContact
+toDomainContact DbUserContact{..} username = UserContact
+  { contactUserId = UserId contactUserId
+  , username = Username username
+  , contactName = contactName
   }
 
 unjoin :: DbUserJoinMaybeBudget -> (DbUser, Maybe DbBudget)
@@ -286,5 +307,21 @@ createOtherUserIdsTable = void $ execute_ [sql|
   ( userGroupId UUID NOT NULL REFERENCES users(userId)
   , userSingleId UUID NOT NULL REFERENCES users(userId)
   , PRIMARY KEY (userGroupId, userSingleId)
+  )
+|]
+
+data DbUserContact = DbUserContact
+  { userId :: UUID
+  , contactUserId :: UUID
+  , contactName :: Maybe (TextMaxLen 50)
+  } deriving (Generic, ToRow, FromRow)
+
+createUserContactsTable :: (MonadIO m, MonadConnReader m) => m ()
+createUserContactsTable = void $ execute_ [sql|
+  CREATE TABLE IF NOT EXISTS userContacts
+  ( userId UUID NOT NULL REFERENCES users(userId)
+  , contactUserId UUID NOT NULL REFERENCES users(userId)
+  , contactName VARCHAR(50)
+  , PRIMARY KEY (userId, contactUserId)
   )
 |]

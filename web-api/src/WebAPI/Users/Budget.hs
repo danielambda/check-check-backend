@@ -1,7 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module WebAPI.Users.Budget (BudgetAPI, budgetServer) where
+module WebAPI.Users.Budget (Dependencies, BudgetAPI, budgetServer) where
 
 import Servant (ServerT, (:<|>) ((:<|>)))
 

@@ -3,12 +3,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SmartPrimitives.TextMinLen (TextMinLen, mkTextMinLen, unTextMinLen) where
 
 import Servant (parseUrlPiece, FromHttpApiData)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
-import Data.Aeson (FromJSON, parseJSON)
+import Data.Aeson (FromJSON, parseJSON, ToJSON)
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -17,8 +18,10 @@ import Data.Data (Proxy (Proxy))
 import Data.String (IsString (fromString))
 
 import SmartPrimitives.Internal (mkFromField, mkParseJSON, mkParseUrlPiece)
+import Database.PostgreSQL.Simple.ToField (ToField)
 
 newtype TextMinLen (n :: Nat) = TextMinLen Text
+  deriving (ToField, ToJSON)
 
 mkTextMinLen :: forall n. (KnownNat n) => Text -> Maybe (TextMinLen n)
 mkTextMinLen text

@@ -7,6 +7,7 @@ import Data.Data (Typeable)
 import Core.Users.Domain.User (User, SomeUser (SomeUser))
 import Core.Users.Domain.UserId (UserId, SomeUserId)
 import Core.Users.Domain.UserType (UserType(..))
+import Core.Users.Domain.UserContact (UserContact)
 
 class Monad m => UsersRepository m where
   addUserToRepo :: User t -> m ()
@@ -18,4 +19,5 @@ class Monad m => UsersRepository m where
   updateSomeUserInRepo :: SomeUser -> m ()
   getGroupsOwnedByFromRepo :: UserId 'Single -> m [User 'Group]
   getGroupsParticipatedByFromRepo :: UserId 'Single -> m [User 'Group]
+  getContactsFromRepo :: UserId 'Single -> m [UserContact]
 

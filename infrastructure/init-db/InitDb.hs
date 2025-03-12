@@ -10,7 +10,7 @@ import System.Environment (getEnv)
 
 import Infrastructure.Common.Persistence (MonadConnReader, withTransaction)
 import Infrastructure.Receipts.PGRepository (createReceiptItemsTable)
-import Infrastructure.Users.PGRepository (createUsersTable, createBudgetsTable, createOtherUserIdsTable)
+import Infrastructure.Users.PGRepository (createUsersTable, createBudgetsTable, createOtherUserIdsTable, createUserContactsTable)
 import Infrastructure.Users.Requests.PGRepository (createRequestsTable, createRequestItemsTable)
 
 main :: IO ()
@@ -26,5 +26,6 @@ initDb = withTransaction $ do
   createUsersTable
   createBudgetsTable
   createOtherUserIdsTable
+  createUserContactsTable
   createRequestsTable
   createRequestItemsTable
