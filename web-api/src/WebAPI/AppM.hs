@@ -62,6 +62,7 @@ instance UsersRepository AppM where
   userExistsInRepo = runUsersRepositoryT . userExistsInRepo
   updateSomeUserInRepo = runUsersRepositoryT . updateSomeUserInRepo
   getContactsFromRepo = runUsersRepositoryT . getContactsFromRepo
+  addContactToRepo = fmap runUsersRepositoryT . addContactToRepo
   getGroupsOwnedByFromRepo = runUsersRepositoryT . getGroupsOwnedByFromRepo
   getGroupsParticipatedByFromRepo = runUsersRepositoryT . getGroupsParticipatedByFromRepo
 

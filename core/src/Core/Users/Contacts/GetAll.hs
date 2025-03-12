@@ -1,7 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 
-module Core.Users.GetContacts (Dependencies, getContacts) where
+module Core.Users.Contacts.GetAll (Dependencies, getContacts) where
 
 import Core.Users.MonadClasses.Repository (UsersRepository(getContactsFromRepo))
 import Core.Users.Domain.UserId (UserId)

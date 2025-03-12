@@ -60,6 +60,7 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   getGroupsOwnedByFromRepo = getGroupsOwnedByFromDb
   getGroupsParticipatedByFromRepo = getGroupsParticipatedByFromDb
   getContactsFromRepo = getContactsFromDb
+  addContactToRepo = addContactToDb
 
   getUserFromRepo :: forall t m0. (MonadIO m0, MonadConnReader m0, Typeable t)
                   => UserId t -> UsersRepositoryT m0 (Maybe (User t))
@@ -192,14 +193,16 @@ getGroupsParticipatedByFromDb (UserId userSingleId) =
           )
 
 getContactsFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [UserContact]
-getContactsFromDb (UserId userId) = map processTuple <$> query [sql|
-  SELECT contactUserId, contactName, username
-  FROM userContacts NATURAL JOIN users
+getContactsFromDb (UserId userId) = map toDomainContact <$> query [sql|
+  SELECT userId, contactUserId, contactName
+  FROM userContacts
   WHERE userId = ?
 |] (Only userId)
-  where
-    processTuple (contactUserId, contactName, username) =
-      toDomainContact DbUserContact{..} username
+
+addContactToDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> UserContact -> m ()
+addContactToDb userId userContact = void $ execute [sql|
+  INSERT INTO userContacts (userId, contactUserId, contactName) VALUES (?, ?, ?)
+|] (toDbContact userId userContact)
 
 toDb :: User t -> (DbUser, Maybe DbBudget, [OtherUserIdRelation])
 toDb user =
@@ -212,6 +215,10 @@ toDb user =
     isGroup = case user of UserGroup{} -> True; _ -> False
     otherUserIdRelations = OtherUserIdRelation userId <$> user ^.. #otherUserIds % #value
   in (DbUser{..}, DbBudget userId <$> mAmount <*> pure mLowerBound, otherUserIdRelations)
+
+toDbContact :: UserId 'Single -> UserContact -> DbUserContact
+toDbContact (UserId userId) UserContact{ contactUserId = UserId contactUserId, mContactName = contactName } =
+  DbUserContact{..}
 
 toDomainSingle :: DbUser -> Maybe DbBudget -> User 'Single
 toDomainSingle DbUser{..} mDbBudget = UserSingle
@@ -244,11 +251,10 @@ toDomainGroup DbUser{..} mDbBudget otherUserIds = UserGroup
     }
   }
 
-toDomainContact :: DbUserContact -> TextLenRange 2 50 -> UserContact
-toDomainContact DbUserContact{..} username = UserContact
+toDomainContact :: DbUserContact -> UserContact
+toDomainContact DbUserContact{..} = UserContact
   { contactUserId = UserId contactUserId
-  , username = Username username
-  , contactName = contactName
+  , mContactName = contactName
   }
 
 unjoin :: DbUserJoinMaybeBudget -> (DbUser, Maybe DbBudget)

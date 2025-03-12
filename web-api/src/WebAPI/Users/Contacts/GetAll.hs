@@ -6,16 +6,17 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module WebAPI.Users.GetContacts (Dependencies, getContacts, toResp) where
+module WebAPI.Users.Contacts.GetAll (Dependencies, getContacts, toResp) where
 
 import Servant (ServerT)
 import Optics ((<&>), (&), (^.))
 
-import CheckCheck.Contracts.Users (GetContacts, ContactResp(..), AuthenticatedUser (..))
+import CheckCheck.Contracts.Users.Contacts (GetContacts, ContactResp(..))
+import CheckCheck.Contracts.Users (AuthenticatedUser (..))
 import Core.Common.Operators ((^^.))
 import Core.Users.Domain.UserId (UserId(UserId))
 import Core.Users.Domain.UserContact (UserContact)
-import qualified Core.Users.GetContacts as Impl (getContacts, Dependencies)
+import qualified Core.Users.Contacts.GetAll as Impl (getContacts, Dependencies)
 
 type Dependencies m = (Impl.Dependencies m)
 getContacts :: Dependencies m => AuthenticatedUser -> ServerT GetContacts m
@@ -27,6 +28,5 @@ getContacts AUser{ userId } = userId
 toResp :: UserContact -> ContactResp
 toResp contact = ContactResp
   { contactUserId = contact ^^. #contactUserId
-  , username = contact ^^. #username
-  , contactName = contact ^. #contactName
+  , contactName = contact ^. #mContactName
   }

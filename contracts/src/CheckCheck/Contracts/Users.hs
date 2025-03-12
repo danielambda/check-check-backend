@@ -8,23 +8,23 @@ module CheckCheck.Contracts.Users
   ( UsersAPI
   , GetMe
   , UserResp(..)
-  , GetContacts
-  , ContactResp(..)
   , AuthenticatedUser(..)
   , Authenticated
   ) where
 
-import Servant.Auth (Auth, JWT)
-import Data.UUID (UUID)
-import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
-import Servant.Auth.JWT (FromJWT, ToJWT)
+import Data.UUID (UUID)
 import Servant.API ((:>), (:<|>), Get, JSON)
+import Servant.Auth (Auth, JWT)
+import Servant.Auth.JWT (FromJWT, ToJWT)
+
+import GHC.Generics (Generic)
+
 import SmartPrimitives.TextLenRange (TextLenRange)
 import CheckCheck.Contracts.Users.Budget (BudgetAPI, BudgetResp)
 import CheckCheck.Contracts.Users.OutgoingRequests (OutgoingRequestsAPI)
 import CheckCheck.Contracts.Users.IncomingRequests (IncomingRequestsAPI)
-import SmartPrimitives.TextMaxLen (TextMaxLen)
+import CheckCheck.Contracts.Users.Contacts (ContactsAPI)
 
 type Authenticated = Auth '[JWT] AuthenticatedUser
 
@@ -35,7 +35,7 @@ data AuthenticatedUser = AUser
 
 type UsersAPI = Authenticated
   :> ( "me" :> GetMe
-  :<|> "contacts" :> GetContacts
+  :<|> "contacts" :> ContactsAPI
   :<|> "outgoing-requests" :> OutgoingRequestsAPI
   :<|> "incoming-requests" :> IncomingRequestsAPI
   :<|> "budget" :> BudgetAPI
@@ -48,14 +48,5 @@ data UserResp = UserResp
   { userId :: UUID
   , username :: TextLenRange 2 50
   , budget :: Maybe BudgetResp
-  } deriving (Generic, ToJSON, FromJSON)
-
-type GetContacts =
-  Get '[JSON] [ContactResp]
-
-data ContactResp = ContactResp
-  { contactUserId :: UUID
-  , username :: TextLenRange 2 50
-  , contactName :: Maybe (TextMaxLen 50)
   } deriving (Generic, ToJSON, FromJSON)
 

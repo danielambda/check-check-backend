@@ -20,4 +20,5 @@ class Monad m => UsersRepository m where
   getGroupsOwnedByFromRepo :: UserId 'Single -> m [User 'Group]
   getGroupsParticipatedByFromRepo :: UserId 'Single -> m [User 'Group]
   getContactsFromRepo :: UserId 'Single -> m [UserContact]
+  addContactToRepo :: UserId 'Single -> UserContact -> m ()
 

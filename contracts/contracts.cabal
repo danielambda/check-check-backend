@@ -13,6 +13,7 @@ library
       CheckCheck.Contracts.API
       CheckCheck.Contracts.Users
       CheckCheck.Contracts.Users.Budget
+      CheckCheck.Contracts.Users.Contacts
       CheckCheck.Contracts.Users.OutgoingRequests
       CheckCheck.Contracts.Users.IncomingRequests
       CheckCheck.Contracts.Groups

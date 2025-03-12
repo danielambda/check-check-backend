@@ -23,7 +23,7 @@ executable web-api
       WebAPI.Groups.GetAll
       WebAPI.Groups.IncomingRequests
       WebAPI.Groups.IncomingRequests.Complete
-      WebAPI.Groups.IncomingRequests.GetMany
+      WebAPI.Groups.IncomingRequests.GetAll
       WebAPI.Groups.OutgoingRequests
       WebAPI.Groups.OutgoingRequests.Send
       WebAPI.Receipts
@@ -33,11 +33,13 @@ executable web-api
       WebAPI.Users.Budget.ApplyDelta
       WebAPI.Users.Budget.Create
       WebAPI.Users.Budget.Get
+      WebAPI.Users.Contacts
+      WebAPI.Users.Contacts.Create
+      WebAPI.Users.Contacts.GetAll
       WebAPI.Users.Get
-      WebAPI.Users.GetContacts
       WebAPI.Users.IncomingRequests
       WebAPI.Users.IncomingRequests.Complete
-      WebAPI.Users.IncomingRequests.GetMany
+      WebAPI.Users.IncomingRequests.GetAll
       WebAPI.Users.OutgoingRequests
       WebAPI.Users.OutgoingRequests.Send
       WebAPI.Users.Register
