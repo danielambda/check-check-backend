@@ -20,7 +20,6 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON (parseJSON), Options (sumEncoding), ToJSON (toJSON), genericParseJSON, defaultOptions, SumEncoding (UntaggedValue), genericToJSON)
-import SmartPrimitives.NonNegative
 import SmartPrimitives.Positive (Positive)
 
 type OutgoingRequestsAPI = SendRequest
@@ -44,7 +43,7 @@ instance ToJSON SendRequestReqBody where
 
 data IndexSelectionReqBody = IndexSelectionReqBody
   { recipientId :: UUID
-  , indices :: NonEmpty (NonNegative Int)
+  , indices :: NonEmpty Int
   } deriving (Generic, FromJSON, ToJSON)
 
 data SendListRequestItemReqBody = SendListRequestItemReqBody

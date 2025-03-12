@@ -11,6 +11,8 @@ build-type:     Simple
 executable telegram-bot
   main-is: Main.hs
   other-modules:
+      AuthServiceClient
+      Clients
       Paths_telegram_bot
   hs-source-dirs:
       src

@@ -1,14 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main (main) where
 
+import Servant.Auth.Client (Token)
 import Telegram.Bot.API
   ( BotName(..), Update, defaultTelegramClientEnv , userUsername
   , responseResult, SomeReplyMarkup (SomeInlineKeyboardMarkup), InlineKeyboardMarkup (..)
@@ -17,105 +22,113 @@ import Telegram.Bot.API
 import Telegram.Bot.Simple
   ( BotApp(..), Eff, startBot_, getEnvToken, ReplyMessage (replyMessageReplyMarkup), reply
   , actionButton, conversationBot, replyText
-  , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect
+  , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect, BotContext (botContextUser), toReplyMessage
   )
 import Telegram.Bot.Simple.UpdateParser
   ( parseUpdate, command, commandWithBotName, callbackQueryDataRead )
 import Configuration.Dotenv (loadFile, defaultConfig)
-import Servant.Client (runClientM, ClientM, client, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv)
+import Servant.Client (runClientM, ClientM, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv)
 
 import qualified Data.Text as T
 
 import CheckCheck.Contracts.Receipts (ReceiptResp (..), ReceiptItemResp (..))
 import Control.Applicative ((<|>))
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask))
+import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask), asks)
 import Control.Monad (unless)
-import Data.Text (Text)
 import Data.Functor ((<&>))
-import Data.Proxy (Proxy(..))
+import Data.Text (Text)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
-import SmartPrimitives.Positive (pattern Positive)
-import CheckCheck.Contracts.API (API)
-import Servant.API ((:<|>)(..))
-import Servant.Auth.Client (Token)
-import CheckCheck.Contracts.Groups (CreateGroupReqBody, GroupResp)
-import Data.UUID (UUID)
+import Optics (LabelOptic (labelOptic), A_Getter, to, unsafeFiltered, (%), (&), traversed, _1, _2, (.~), (^.), view)
 import qualified Telegram.Bot.API as TG
-import CheckCheck.Contracts.Users (UserResp)
+import SmartPrimitives.Positive (pattern Positive)
+import Clients
+  ( ApiClient(..), apiClient
+  , UsersClient (..)
+  , OutgointRequestsClient (..)
+  )
+import Data.UUID (UUID, fromString, toString)
+import qualified AuthServiceClient as Auth (getJwtToken)
+import Data.ByteString.Lazy (ByteString, fromStrict)
+import Data.Text.Encoding (encodeUtf16BE)
+import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody(..), IndexSelectionReqBody (..))
+import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
+import Data.Maybe (fromJust)
 
-data ApiClient = ApiClient
-  { getReceipt :: Text -> ClientM ReceiptResp
-  , mkGroupsClient :: Token -> GroupsClient
-  , mkUsersClient :: Token -> UsersClient
-  }
+currentUser :: AppM TG.User
+currentUser = AppM $ ReaderT $ const $
+  asks botContextUser
 
-data GroupsClient = GroupsClient
-  { createGroup :: CreateGroupReqBody -> ClientM GroupResp
-  , getGroup :: UUID -> ClientM GroupResp
-  , getAllGroups :: ClientM [GroupResp]
-  }
+data ReceiptItem = ReceiptItem
+  { index :: Int
+  , name :: Text
+  , price :: Integer
+  , quantity :: Double
+  } deriving (Show, Read)
 
-data UsersClient = UsersClient
-  { getMe :: ClientM UserResp
-  , aboba :: Int
-  }
-
-mkApiClient :: ApiClient
-mkApiClient = ApiClient{..}
-  where
-    getReceipt :<|> groupsClient :<|> usersClient = client $ Proxy @API
-
-    mkGroupsClient token = GroupsClient{..}
-      where
-        createGroup :<|> getGroup :<|> getAllGroups :<|> _ = groupsClient token
-
-    mkUsersClient token = UsersClient{..}
-      where
-        getMe :<|> _ = usersClient token
+instance LabelOptic "index" A_Getter ReceiptItem ReceiptItem Int Int where
+  labelOptic = to $ \ReceiptItem{ index } -> index
+instance LabelOptic "name" A_Getter ReceiptItem ReceiptItem Text Text where
+  labelOptic = to $ \ReceiptItem{ name } -> name
 
 data State
   = InitialState
-  | SelectingReceiptItems Text [Int]
+  | SelectingReceiptItems Text [(Bool, ReceiptItem)]
+  | SelectingRequestRecipient Text (NonEmpty Int)
 
 data Transition
-  = ShowReceipt Text
+  = Id
+  | ShowReceipt Text
+  | StartSelectingReceiptItems Text [ReceiptItem]
   | SelectReceiptItem Int
-  | FinishSelectingReceiptItems
+  | StartSelectingRequestRecipient
+  | SelectRequestRecipient UUID
   deriving (Read, Show)
 
-mkBotApp :: ClientEnv -> BotName -> BotApp State Transition
-mkBotApp clientEnv botName = BotApp
+mkBotApp :: ClientEnv -> ClientEnv -> ByteString -> BotName -> BotApp State Transition
+mkBotApp clientEnv authClientEnv secret botName = BotApp
   { botInitialModel = InitialState
   , botAction = flip $ decideTransition botName
   , botHandler = botHandler
   , botJobs = []
   }
   where
-    botHandler action model = nt clientEnv $ handleTransition action model
-    nt :: ClientEnv -> Eff' action model -> Eff action model
-    nt = flip runReaderT
+    botHandler action model = nt $ handleTransition action model
+    nt :: Eff' action model -> Eff action model
+    nt = flip runReaderT Env{..}
 
-newtype AppM a = AppM { _runAppM :: ReaderT ClientEnv BotM a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader ClientEnv)
+data Env = Env
+  { clientEnv :: ClientEnv
+  , authClientEnv :: ClientEnv
+  , secret :: ByteString
+  }
+
+newtype AppM a = AppM { _runAppM :: ReaderT Env BotM a }
+  deriving (Functor, Applicative, Monad, MonadIO, MonadReader Env)
 
 runReq :: ClientM a -> AppM (Either ClientError a)
 runReq req = do
-  clientEnv <- ask
+  clientEnv <- asks clientEnv
   liftIO $ runClientM req clientEnv
+
+runAuthReq :: ClientM a -> AppM (Either ClientError a)
+runAuthReq req = do
+  authClientEnv <- asks authClientEnv
+  liftIO $ runClientM req authClientEnv
 
 tg :: BotM a -> AppM a
 tg = AppM . ReaderT . const
 
-type Eff' action = ReaderT ClientEnv (Eff action)
+type Eff' action = ReaderT Env (Eff action)
 
 tshow :: Show a => a -> Text
 tshow = T.pack . show
 
+infix 0 <#
 (<#) :: GetAction a action => state -> AppM a -> Eff' action state
-state <# (AppM app) = do
-  clientEnv <- ask
-  let bot = runReaderT app clientEnv
+state <# AppM app = do
+  env <- ask
+  let bot = runReaderT app env
   ReaderT $ const $ withEffect bot state
 
 divide :: Int -> Double -> Double
@@ -135,6 +148,14 @@ process = fmap
       <> " rub"
     )
 
+getJwtToken :: TG.User -> AppM Token
+getJwtToken user = do
+  secret <- asks secret
+  runAuthReq (Auth.getJwtToken secret user) >>= \case
+    Left _ -> getJwtToken user
+    Right (Right token) -> return token
+    Right (Left err) -> error $ "jose error" <> show err
+
 decideTransition :: BotName -> State -> Update -> Maybe Transition
 decideTransition (BotName botName) state = parseUpdate parser
   where
@@ -143,27 +164,39 @@ decideTransition (BotName botName) state = parseUpdate parser
     parser = case state of
       InitialState -> ShowReceipt <$> (command' "qr" <|> command' "receipt")
 
-      SelectingReceiptItems _ _ -> do
+      SelectingReceiptItems{} -> do
         transition <- callbackQueryDataRead
         unless (isAllowed transition) $
           fail "unsupported transition"
         return transition
-          where
-            isAllowed (SelectReceiptItem _) = True
-            isAllowed FinishSelectingReceiptItems = True
-            isAllowed _ = False
+        where
+          isAllowed SelectReceiptItem{} = True
+          isAllowed StartSelectingRequestRecipient{} = True
+          isAllowed _ = False
+
+      SelectingRequestRecipient{} -> do
+        transition <- callbackQueryDataRead
+        unless (isAllowed transition) $
+          fail "unsupported transition"
+        return transition
+        where
+          isAllowed SelectRequestRecipient{} = True
+          isAllowed _ = False
+
 
 handleTransition :: Transition -> State -> Eff' Transition State
 handleTransition transition InitialState = case transition of
-  ShowReceipt qr -> SelectingReceiptItems qr [] <# do
-    let ApiClient{ getReceipt } = mkApiClient
+  ShowReceipt qr -> InitialState <# do
+    let ApiClient{ getReceipt } = apiClient
     runReq (getReceipt qr) >>= \case
-      Left err -> liftIO $ putStrLn $ "Error: " <> show err
+      Left err -> do
+        liftIO $ putStrLn $ "Error: " <> show err
+        return Id
       Right (ReceiptResp items) -> do
         let items' = process items
-        let confirmButton = actionButton "Confirm" FinishSelectingReceiptItems
+        let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
         let itemsButtons = items'
-              <&> (: [])
+              <&> (:[])
                .  \(index, item) -> actionButton item (SelectReceiptItem index)
         let buttons = itemsButtons ++ [[confirmButton]]
         let msg' = "Scanned receipt items: "
@@ -171,43 +204,66 @@ handleTransition transition InitialState = case transition of
                 { inlineKeyboardMarkupInlineKeyboard = buttons }
               }
         tg $ reply msg'
+        return $ StartSelectingReceiptItems qr $ items
+          <&> \ReceiptItemResp{ price = Positive price, quantity = Positive quantity, .. } ->
+            ReceiptItem{..}
+  StartSelectingReceiptItems qr items -> pure $ SelectingReceiptItems qr (map (False,) items)
   _ -> undefined
 
-handleTransition action (SelectingReceiptItems qr indices) = case action of
-  SelectReceiptItem index ->
-    let indices' = index:indices in
-    SelectingReceiptItems qr indices' <# do
-    let ApiClient{ getReceipt } = mkApiClient
-    runReq (getReceipt qr) >>= \case
-      Left err -> liftIO $ putStrLn $ "Error: " <> show err
-      Right (ReceiptResp items) -> do
-        let items' = process items
-        let confirmButton = actionButton "Confirm" FinishSelectingReceiptItems
-        let itemsButtons = items'
-              <&> (: [])
-               .  \(i, item) -> actionButton item (SelectReceiptItem i)
-        let buttons = itemsButtons ++ [[confirmButton]]
-        let editMessage' = EditMessage
-              { editMessageText = "selected items: " <> tshow indices'
-              , editMessageParseMode = Nothing
-              , editMessageLinkPreviewOptions = Nothing
-              , editMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-                { inlineKeyboardMarkupInlineKeyboard = buttons }
-              }
-        tg $ editUpdateMessage editMessage'
-  FinishSelectingReceiptItems -> InitialState <# do
-    let ApiClient{ getReceipt } = mkApiClient
-    runReq (getReceipt qr) >>= \case
-      Left err -> liftIO $ putStrLn $ "Error: " <> show err
-      Right (ReceiptResp items) -> do
-        let filteredItems = filter (flip elem indices . index) items
+handleTransition transition (SelectingReceiptItems qr items) = case transition of
+  SelectReceiptItem i ->
+    let items' = items & traversed % unsafeFiltered ((i ==) . (^. _2 % #index)) % _1 .~ True
+    in SelectingReceiptItems qr items' <# do
+      let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
+      let itemsButtons = items'
+            <&> (:[])
+             .  \(_, ReceiptItem{ index, name }) -> actionButton name (SelectReceiptItem index)
+      let buttons = itemsButtons ++ [[confirmButton]]
+      let editMessage' = EditMessage
+            { editMessageText = "selected items: " <> tshow (view #index . snd <$> filter fst items')
+            , editMessageParseMode = Nothing
+            , editMessageLinkPreviewOptions = Nothing
+            , editMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
+              { inlineKeyboardMarkupInlineKeyboard = buttons }
+            }
+      tg $ editUpdateMessage editMessage'
+
+  StartSelectingRequestRecipient ->
+    case nonEmpty $ items & filter fst & map snd of
+      Just filteredItems -> SelectingRequestRecipient qr (view #index <$> filteredItems) <# do
         let overallSum = (`divide` 100) $ sum $ filteredItems <&>
-              \ReceiptItemResp{ quantity = Positive quantity, price = Positive price } ->
+              \ReceiptItem{ quantity, price } ->
                 round (fromIntegral price * quantity)
-        let msgLines
-              = ("В сумме на: " <> tshow overallSum)
-              : (snd <$> process filteredItems)
-        tg $ replyText $ T.unlines msgLines
+        let replyMsgText = T.unlines
+              $ ("В сумме на: " <> tshow overallSum)
+              : (view #name <$> toList filteredItems)
+        let replyMsg = (toReplyMessage replyMsgText)
+              { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
+                { inlineKeyboardMarkupInlineKeyboard = [[
+                  actionButton "send to aboba" $ SelectRequestRecipient $ fromJust $ fromString "1e8dd476-f769-48b4-8af7-58fd5095bc06"
+                ]] }
+              }
+
+        tg $ reply replyMsg
+
+      Nothing -> SelectingReceiptItems qr items <# do
+        tg $ replyText "this text has to be edited, btw you did not select anything"
+  _ -> undefined
+
+handleTransition transition (SelectingRequestRecipient qr indices) = case transition of
+  SelectRequestRecipient recipientId -> SelectingRequestRecipient qr indices <# do
+    user <- currentUser
+    token <- getJwtToken user
+    let OutgointRequestsClient{ sendRequest } = outgoingRequestsClient $ mkUsersClient apiClient token
+    let reqBody = SendReceiptItemsRequestReqBody
+          { receiptQr = qr
+          , indexSelections = singleton $
+            IndexSelectionReqBody{..}
+          }
+    runReq (sendRequest reqBody) >>= \case
+      Right _ -> tg $ replyText $ T.pack $ toString recipientId
+      Left err -> liftIO $ print err
+    return ()
   _ -> undefined
 
 run :: TG.Token -> IO ()
@@ -218,9 +274,13 @@ run token = do
 
   manager <- newManager defaultManagerSettings
   let clientEnv = mkClientEnv manager (BaseUrl Http "localhost" 8080 "")
+  let authClientEnv = mkClientEnv manager (BaseUrl Http "localhost" 5183 "")
 
-  let botApp = conversationBot updateChatId $ mkBotApp clientEnv botName
+  let TG.Token secret' = token
+  let secret = fromStrict $ encodeUtf16BE secret'
+  let botApp = conversationBot updateChatId $ mkBotApp clientEnv authClientEnv secret botName
   startBot_ botApp tgEnv
+
 
 main :: IO ()
 main = do

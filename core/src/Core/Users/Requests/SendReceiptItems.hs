@@ -19,7 +19,6 @@ import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty ((!!))
 import Control.Monad (forM)
 
-import SmartPrimitives.NonNegative (NonNegative, unNonNegative, nonNegativeLength)
 import Core.Common.Operators ((*>>))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime)
@@ -40,14 +39,14 @@ data Data = Data
 
 data IndexSelection = IndexSelection
   { recipientId :: SomeUserId
-  , indices :: NonEmpty (NonNegative Int)
+  , indices :: NonEmpty Int
   }
 
 data Error
   = UserDoesNotExist SomeUserId
   | ReceiptDoesNotExist Text
-  | ReceiptIndexOutOfRange (NonNegative Int) (NonNegative Int)
-  | ReceiptIndexDuplicate (NonNegative Int)
+  | ReceiptIndexOutOfRange Int Int
+  | ReceiptIndexDuplicate Int
 
 type Dependencies m =
   ( MonadUUID m, MonadUTCTime m
@@ -66,7 +65,7 @@ sendRequest Data{ senderId, receiptQr, indexSelections } = do
       return $ Left $ ReceiptDoesNotExist receiptQr
     Just receipt -> do
       let items = receipt ^. #items
-      let receiptItemsCount = nonNegativeLength items
+      let receiptItemsCount = length items
       fmap sequence $ forM indexSelections $
         createAndStoreRequest senderId receipt receiptItemsCount
 
@@ -74,7 +73,7 @@ createAndStoreRequest
   :: Dependencies m
   => SomeUserId
   -> Receipt
-  -> NonNegative Int
+  -> Int
   -> IndexSelection
   -> m (Either Error (Request 'Pending))
 createAndStoreRequest senderId receipt receiptItemsCount
@@ -84,7 +83,7 @@ createAndStoreRequest senderId receipt receiptItemsCount
     return $ Left $ ReceiptIndexOutOfRange maxIndex receiptItemsCount
   else do
     let indexedItems = receipt ^. #items
-    let selectedItems = snd . (indexedItems NonEmpty.!!) . unNonNegative <$> indices
+    let selectedItems = snd . (indexedItems NonEmpty.!!) <$> indices
     let requestItems = toRequest <$> selectedItems
     newRequest senderId recipientId requestItems >>=
       (addRequestToRepo *>> return . Right)
