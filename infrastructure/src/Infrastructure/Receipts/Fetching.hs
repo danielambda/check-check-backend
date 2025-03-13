@@ -9,7 +9,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Infrastructure.Receipts.Fetching (ReceiptsFetchingT (..)) where
+module Infrastructure.Receipts.Fetching (ReceiptsFetchingT(..)) where
 
 import Network.HTTP.Simple
   ( getResponseBody, addRequestHeader, setRequestMethod, setRequestBodyJSON

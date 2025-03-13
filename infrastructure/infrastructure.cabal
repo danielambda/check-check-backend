@@ -10,6 +10,7 @@ build-type:     Simple
 
 library
   exposed-modules:
+      Infrastructure
       Infrastructure.Common.Persistence
       Infrastructure.Receipts.Fetching
       Infrastructure.Receipts.PGRepository

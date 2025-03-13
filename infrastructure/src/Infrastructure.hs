@@ -1,0 +1,33 @@
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
+module Infrastructure (InfrastructureT(..)) where
+
+import Control.Monad.IO.Class (MonadIO)
+
+import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching)
+import Core.Receipts.MonadClasses.Repository (ReceiptsRepository)
+import Core.Users.MonadClasses.Repository (UsersRepository)
+import Core.Users.Requests.MonadClasses.Repository (RequestsRepository)
+import Infrastructure.Receipts.Fetching (ReceiptsFetchingT(..))
+import Infrastructure.Receipts.PGRepository (ReceiptsRepositoryT(..))
+import Infrastructure.Users.PGRepository (UsersRepositoryT(..))
+import Infrastructure.Users.Requests.PGRepository (RequestsRepositoryT(..))
+import Infrastructure.Common.Persistence (MonadConnReader)
+
+newtype InfrastructureT m a = InfrastructureT
+  { runInfrastructureT :: m a }
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnReader)
+
+deriving via ReceiptsFetchingT (InfrastructureT m) instance (MonadIO m) =>
+  ReceiptsFetching (InfrastructureT m)
+deriving via ReceiptsRepositoryT (InfrastructureT m) instance (MonadIO m, MonadConnReader m) =>
+  ReceiptsRepository (InfrastructureT m)
+
+deriving via UsersRepositoryT (InfrastructureT m) instance (MonadIO m, MonadConnReader m) =>
+  UsersRepository (InfrastructureT m)
+
+deriving via RequestsRepositoryT (InfrastructureT m) instance (MonadIO m, MonadConnReader m) =>
+  RequestsRepository (InfrastructureT m)
+
