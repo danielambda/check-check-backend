@@ -33,6 +33,7 @@ library
       Core.Users.GetAllGroups
       Core.Users.Contacts.GetAll
       Core.Users.Contacts.Create
+      Core.Users.Contacts.Delete
       Core.Users.Budget.Domain.Budget
       Core.Users.Budget.Create
       Core.Users.Budget.ApplyDelta

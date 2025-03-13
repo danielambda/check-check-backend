@@ -65,6 +65,7 @@ instance UsersRepository AppM where
   addContactToRepo = fmap runUsersRepositoryT . addContactToRepo
   getGroupsOwnedByFromRepo = runUsersRepositoryT . getGroupsOwnedByFromRepo
   getGroupsParticipatedByFromRepo = runUsersRepositoryT . getGroupsParticipatedByFromRepo
+  deleteContactFromRepo = fmap runUsersRepositoryT . deleteContactFromRepo
 
 instance RequestsRepository AppM where
   addRequestToRepo = runRequestsRepositoryT . addRequestToRepo

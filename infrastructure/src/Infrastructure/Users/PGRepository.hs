@@ -61,6 +61,7 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   getGroupsParticipatedByFromRepo = getGroupsParticipatedByFromDb
   getContactsFromRepo = getContactsFromDb
   addContactToRepo = addContactToDb
+  deleteContactFromRepo = deleteContactFromDb
 
   getUserFromRepo :: forall t m0. (MonadIO m0, MonadConnReader m0, Typeable t)
                   => UserId t -> UsersRepositoryT m0 (Maybe (User t))
@@ -203,6 +204,12 @@ addContactToDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> UserContac
 addContactToDb userId userContact = void $ execute [sql|
   INSERT INTO userContacts (userId, contactUserId, contactName) VALUES (?, ?, ?)
 |] (toDbContact userId userContact)
+
+deleteContactFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> UserId 'Single -> m ()
+deleteContactFromDb (UserId userId) (UserId contactUserId) = void $ execute [sql|
+  DELETE FROM userContacts
+  WHERE userId = ? AND contactUserId = ?
+|] (userId, contactUserId)
 
 toDb :: User t -> (DbUser, Maybe DbBudget, [OtherUserIdRelation])
 toDb user =

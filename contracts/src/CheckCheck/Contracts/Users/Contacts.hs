@@ -8,28 +8,32 @@ module CheckCheck.Contracts.Users.Contacts
   ( ContactsAPI
   , GetContacts
   , CreateContact
+  , DeleteContact
   , CreateContactReqBody(..)
   , ContactResp(..)
   ) where
 
 import Data.Aeson (ToJSON, FromJSON)
 import Data.UUID (UUID)
-import Servant.API ((:<|>), Get, JSON, ReqBody, (:>), Post)
+import Servant.API ((:<|>), Get, JSON, ReqBody, (:>), Post, Capture, Delete, NoContent)
 
 import GHC.Generics (Generic)
 
-import SmartPrimitives.TextLenRange (TextLenRange)
 import SmartPrimitives.TextMaxLen (TextMaxLen)
 
 type ContactsAPI
   =    GetContacts
   :<|> CreateContact
+  :<|> DeleteContact
 
 type GetContacts =
   Get '[JSON] [ContactResp]
 
 type CreateContact =
   ReqBody '[JSON] CreateContactReqBody :> Post '[JSON] ContactResp
+
+type DeleteContact =
+  Capture "contactUserId" UUID :> Delete '[JSON] NoContent
 
 data CreateContactReqBody = CreateContactReqBody
   { contactUserId :: UUID

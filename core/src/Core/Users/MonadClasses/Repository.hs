@@ -21,4 +21,5 @@ class Monad m => UsersRepository m where
   getGroupsParticipatedByFromRepo :: UserId 'Single -> m [User 'Group]
   getContactsFromRepo :: UserId 'Single -> m [UserContact]
   addContactToRepo :: UserId 'Single -> UserContact -> m ()
+  deleteContactFromRepo :: UserId 'Single -> UserId 'Single -> m ()
 
