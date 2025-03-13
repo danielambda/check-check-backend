@@ -45,7 +45,7 @@ import SmartPrimitives.Positive (pattern Positive)
 import Clients
   ( ApiClient(..), apiClient
   , UsersClient (..)
-  , OutgointRequestsClient (..)
+  , OutgointRequestsClient (..), ContactsClient (ContactsClient, getContacts)
   )
 import Data.UUID (UUID, fromString, toString)
 import qualified AuthServiceClient as Auth (getJwtToken)
@@ -54,6 +54,8 @@ import Data.Text.Encoding (encodeUtf16BE)
 import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody(..), IndexSelectionReqBody (..))
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
 import Data.Maybe (fromJust)
+import SmartPrimitives.TextMaxLen (TextMaxLen)
+import CheckCheck.Contracts.Users.Contacts (ContactResp(..))
 
 currentUser :: AppM TG.User
 currentUser = AppM $ ReaderT $ const $
@@ -65,6 +67,11 @@ data ReceiptItem = ReceiptItem
   , price :: Integer
   , quantity :: Double
   } deriving (Show, Read)
+
+data UserContact = UserContact
+  { contactUserId :: UUID
+  , mContactName :: Maybe (TextMaxLen 50)
+  }
 
 instance LabelOptic "index" A_Getter ReceiptItem ReceiptItem Int Int where
   labelOptic = to $ \ReceiptItem{ index } -> index
@@ -183,7 +190,6 @@ decideTransition (BotName botName) state = parseUpdate parser
           isAllowed SelectRequestRecipient{} = True
           isAllowed _ = False
 
-
 handleTransition :: Transition -> State -> Eff' Transition State
 handleTransition transition InitialState = case transition of
   ShowReceipt qr -> InitialState <# do
@@ -237,14 +243,21 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
         let replyMsgText = T.unlines
               $ ("В сумме на: " <> tshow overallSum)
               : (view #name <$> toList filteredItems)
-        let replyMsg = (toReplyMessage replyMsgText)
-              { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-                { inlineKeyboardMarkupInlineKeyboard = [[
-                  actionButton "send to aboba" $ SelectRequestRecipient $ fromJust $ fromString "1e8dd476-f769-48b4-8af7-58fd5095bc06"
-                ]] }
-              }
+        token <- getJwtToken =<< currentUser
+        let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
+        runReq getContacts >>= \case
+          Left err -> liftIO $ print err
+          Right contactsResp -> do
+            let contacts = contactsResp <&>
+                  \ContactResp{..} -> UserContact{ mContactName = contactName, ..}
+            let replyMsg = (toReplyMessage replyMsgText)
+                  { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
+                    { inlineKeyboardMarkupInlineKeyboard = [[
+                      actionButton "send to aboba" $ SelectRequestRecipient $ fromJust $ fromString "1e8dd476-f769-48b4-8af7-58fd5095bc06"
+                    ]] }
+                  }
 
-        tg $ reply replyMsg
+            tg $ reply replyMsg
 
       Nothing -> SelectingReceiptItems qr items <# do
         tg $ replyText "this text has to be edited, btw you did not select anything"
@@ -252,8 +265,7 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
 
 handleTransition transition (SelectingRequestRecipient qr indices) = case transition of
   SelectRequestRecipient recipientId -> SelectingRequestRecipient qr indices <# do
-    user <- currentUser
-    token <- getJwtToken user
+    token <- getJwtToken =<< currentUser
     let OutgointRequestsClient{ sendRequest } = outgoingRequestsClient $ mkUsersClient apiClient token
     let reqBody = SendReceiptItemsRequestReqBody
           { receiptQr = qr

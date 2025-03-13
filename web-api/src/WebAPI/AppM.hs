@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingVia #-}
 
 module WebAPI.AppM (AppM(..), Env(..)) where
 
@@ -6,8 +7,8 @@ import Servant (Handler, ServerError)
 
 import qualified Database.PostgreSQL.Simple as PG (Connection)
 import qualified Database.Redis as Redis (Connection)
+import qualified Data.UUID.V4 as V4 (nextRandom)
 import Data.Pool (Pool, withResource)
-import Data.UUID.V4 (nextRandom)
 import Data.Time (getCurrentTime)
 
 import Control.Monad.Reader (ReaderT, asks, MonadReader)
@@ -24,10 +25,17 @@ import Core.Common.MonadClasses.MonadUUID (MonadUUID(..))
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime(..))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Core.Users.Requests.MonadClasses.Repository (RequestsRepository(..))
-import Infrastructure.Users.Requests.PGRepository (runRequestsRepositoryT)
+import Infrastructure.Users.Requests.PGRepository (RequestsRepositoryT(..))
 
 newtype AppM a = AppM { runAppM :: ReaderT Env Handler a }
   deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadError ServerError)
+  deriving ReceiptsFetching via ReceiptsFetchingT AppM
+  deriving ReceiptsRepository via ReceiptsRepositoryT AppM
+  deriving UsersRepository via UsersRepositoryT AppM
+  deriving RequestsRepository via RequestsRepositoryT AppM
+
+instance MonadUUID AppM where newUUID = liftIO V4.nextRandom
+instance MonadUTCTime AppM where currentTime = liftIO getCurrentTime
 
 data Env = Env
   { pgConnPool :: Pool PG.Connection
@@ -44,31 +52,3 @@ askRedisConn = do
   pool <- asks redisConnPool
   liftIO $ withResource pool return
 
-instance MonadUUID AppM where
-  newUUID = liftIO nextRandom
-instance MonadUTCTime AppM where
-  currentTime = liftIO getCurrentTime
-
-instance ReceiptsFetching AppM where
-  fetchReceiptItems = runReceiptsFetchingT . fetchReceiptItems
-instance ReceiptsRepository AppM where
-  getReceiptFromRepo = runReceiptsRepositoryT . getReceiptFromRepo
-  addReceiptToRepo = (runReceiptsRepositoryT .) . addReceiptToRepo
-
-instance UsersRepository AppM where
-  addUserToRepo = runUsersRepositoryT . addUserToRepo
-  getUserFromRepo = runUsersRepositoryT . getUserFromRepo
-  getSomeUserFromRepo = runUsersRepositoryT . getSomeUserFromRepo
-  userExistsInRepo = runUsersRepositoryT . userExistsInRepo
-  updateSomeUserInRepo = runUsersRepositoryT . updateSomeUserInRepo
-  getContactsFromRepo = runUsersRepositoryT . getContactsFromRepo
-  addContactToRepo = fmap runUsersRepositoryT . addContactToRepo
-  getGroupsOwnedByFromRepo = runUsersRepositoryT . getGroupsOwnedByFromRepo
-  getGroupsParticipatedByFromRepo = runUsersRepositoryT . getGroupsParticipatedByFromRepo
-  deleteContactFromRepo = fmap runUsersRepositoryT . deleteContactFromRepo
-
-instance RequestsRepository AppM where
-  addRequestToRepo = runRequestsRepositoryT . addRequestToRepo
-  getIncomingRequestsFromRepo = runRequestsRepositoryT . getIncomingRequestsFromRepo
-  getRequestFromRepo = runRequestsRepositoryT . getRequestFromRepo
-  markRequestCompletedInRepo = runRequestsRepositoryT . markRequestCompletedInRepo
