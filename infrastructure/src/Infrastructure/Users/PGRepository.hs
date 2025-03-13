@@ -47,16 +47,16 @@ import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Domain.UserContact (UserContact (..))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Infrastructure.Common.Persistence
-  ( MonadConnReader, execute, executeMany, withTransaction
+  ( MonadPG, execute, executeMany, withTransaction
   , query, queryMaybe, querySingleField, execute_
   )
 import SmartPrimitives.TextMaxLen (TextMaxLen)
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }
-  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnReader)
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadPG)
 
-instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) where
+instance MonadPG m => UsersRepository (UsersRepositoryT m) where
   addUserToRepo = addUserToDb
   getSomeUserFromRepo = getSomeUserFromDb
   userExistsInRepo = userExistsInDb
@@ -67,7 +67,7 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
   addContactToRepo = addContactToDb
   deleteContactFromRepo = deleteContactFromDb
 
-  getUserFromRepo :: forall t m0. (MonadIO m0, MonadConnReader m0, Typeable t)
+  getUserFromRepo :: forall t m0. (MonadPG m0, Typeable t)
                   => UserId t -> UsersRepositoryT m0 (Maybe (User t))
   getUserFromRepo = case eqT @t @'Single of
     Just Refl -> getUserSingleFromDb
@@ -75,7 +75,7 @@ instance (MonadIO m, MonadConnReader m) => UsersRepository (UsersRepositoryT m) 
       Just Refl -> getUserGroupFromDb
       Nothing -> error "unreachable"
 
-addUserToDb :: (MonadIO m, MonadConnReader m) => User t -> m ()
+addUserToDb :: MonadPG m => User t -> m ()
 addUserToDb user = do
   let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
   withTransaction $ do
@@ -89,7 +89,7 @@ addUserToDb user = do
       INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
     |]
 
-getSomeUserFromDb :: (MonadIO m, MonadConnReader m) => SomeUserId -> m (Maybe SomeUser)
+getSomeUserFromDb :: MonadPG m => SomeUserId -> m (Maybe SomeUser)
 getSomeUserFromDb (SomeUserId userId) = withTransaction $ do
   mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
     SELECT userId, username, ownerId, isGroup, amount, lowerBound
@@ -102,14 +102,14 @@ getSomeUserFromDb (SomeUserId userId) = withTransaction $ do
     |] (Only userId)
     return $ toDomainSome dbUser mDbBudget otherUserIdRelations
 
-getUserSingleFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m (Maybe (User 'Single))
+getUserSingleFromDb :: MonadPG m => UserId 'Single -> m (Maybe (User 'Single))
 getUserSingleFromDb (UserId userId) =
   fmap (uncurry toDomainSingle . unjoin) <$> queryMaybe [sql|
     SELECT userId, username, NULL, FALSE, amount, lowerBound
     FROM users NATURAL LEFT JOIN budgets WHERE userId = ?
   |] (Only userId)
 
-getUserGroupFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Group -> m (Maybe (User 'Group))
+getUserGroupFromDb :: MonadPG m => UserId 'Group -> m (Maybe (User 'Group))
 getUserGroupFromDb (UserId userId) = withTransaction $ do
   mDbUserJoinBudget <- fmap unjoin <$> queryMaybe [sql|
     SELECT userId, username, ownerId, isGroup, amount, lowerBound
@@ -122,14 +122,13 @@ getUserGroupFromDb (UserId userId) = withTransaction $ do
     |] (Only userId)
     return $ toDomainGroup dbUser mDbBudget otherUserIdRelations
 
-userExistsInDb :: (MonadIO m, MonadConnReader m)
-               => SomeUserId -> m Bool
+userExistsInDb :: MonadPG m => SomeUserId -> m Bool
 userExistsInDb (SomeUserId userId) =
   querySingleField [sql|
     SELECT EXISTS(SELECT 1 FROM users WHERE userId = ?)
   |] (Only userId)
 
-updateSomeUserInDb :: (MonadIO m, MonadConnReader m) => SomeUser -> m ()
+updateSomeUserInDb :: MonadPG m => SomeUser -> m ()
 updateSomeUserInDb (SomeUser user) = do
   let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
   let userId = user ^^. #userId
@@ -147,7 +146,7 @@ updateSomeUserInDb (SomeUser user) = do
       INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
     |]
 
-getGroupsOwnedByFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [User 'Group]
+getGroupsOwnedByFromDb :: MonadPG m => UserId 'Single -> m [User 'Group]
 getGroupsOwnedByFromDb (UserId ownerId) =
   map (\(x, y, z) -> toDomainGroup x y z) . normalize <$> query [sql|
     SELECT userId, username, amount, lowerBound, userSingleId
@@ -172,7 +171,7 @@ getGroupsOwnedByFromDb (UserId ownerId) =
             )
           )
 
-getGroupsParticipatedByFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [User 'Group]
+getGroupsParticipatedByFromDb :: MonadPG m => UserId 'Single -> m [User 'Group]
 getGroupsParticipatedByFromDb (UserId userSingleId) =
   map (\(x, y, z) -> toDomainGroup x y z) . normalize <$> query [sql|
     SELECT userId, username, amount, lowerBound, ownerId
@@ -197,19 +196,19 @@ getGroupsParticipatedByFromDb (UserId userSingleId) =
             )
           )
 
-getContactsFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> m [UserContact]
+getContactsFromDb :: MonadPG m => UserId 'Single -> m [UserContact]
 getContactsFromDb (UserId userId) = map toDomainContact <$> query [sql|
   SELECT userId, contactUserId, contactName
   FROM userContacts
   WHERE userId = ?
 |] (Only userId)
 
-addContactToDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> UserContact -> m ()
+addContactToDb :: MonadPG m => UserId 'Single -> UserContact -> m ()
 addContactToDb userId userContact = void $ execute [sql|
   INSERT INTO userContacts (userId, contactUserId, contactName) VALUES (?, ?, ?)
 |] (toDbContact userId userContact)
 
-deleteContactFromDb :: (MonadIO m, MonadConnReader m) => UserId 'Single -> UserId 'Single -> m ()
+deleteContactFromDb :: MonadPG m => UserId 'Single -> UserId 'Single -> m ()
 deleteContactFromDb (UserId userId) (UserId contactUserId) = void $ execute [sql|
   DELETE FROM userContacts
   WHERE userId = ? AND contactUserId = ?
@@ -288,7 +287,7 @@ data DbUser = DbUser
   , isGroup :: Bool
   } deriving (Generic, ToRow, FromRow)
 
-createUsersTable :: (MonadIO m, MonadConnReader m) => m ()
+createUsersTable :: MonadPG m => m ()
 createUsersTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS users
   ( userId UUID PRIMARY KEY NOT NULL
@@ -304,7 +303,7 @@ data DbBudget = DbBudget
   , mLowerBound :: Maybe Integer
   } deriving (Generic, ToRow, FromRow)
 
-createBudgetsTable :: (MonadIO m, MonadConnReader m) => m ()
+createBudgetsTable :: MonadPG m => m ()
 createBudgetsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS budgets
   ( userId UUID PRIMARY KEY NOT NULL REFERENCES users(userId)
@@ -318,7 +317,7 @@ data OtherUserIdRelation = OtherUserIdRelation
   , userSingleId :: UUID
   } deriving (Generic, ToRow, FromRow)
 
-createOtherUserIdsTable :: (MonadIO m, MonadConnReader m) => m ()
+createOtherUserIdsTable :: MonadPG m => m ()
 createOtherUserIdsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS otherUserIds
   ( userGroupId UUID NOT NULL REFERENCES users(userId)
@@ -333,7 +332,7 @@ data DbUserContact = DbUserContact
   , contactName :: Maybe (TextMaxLen 50)
   } deriving (Generic, ToRow, FromRow)
 
-createUserContactsTable :: (MonadIO m, MonadConnReader m) => m ()
+createUserContactsTable :: MonadPG m => m ()
 createUserContactsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS userContacts
   ( userId UUID NOT NULL REFERENCES users(userId)

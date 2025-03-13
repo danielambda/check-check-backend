@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-x-partial #-}
 
 module Infrastructure.Common.Persistence
-  ( MonadConnReader, askConn
+  ( MonadPG, askConn
   , query, queryMaybe, query_, querySingleField
   , execute, execute_
   , executeMany
@@ -23,54 +23,46 @@ import Data.Int (Int64)
 import Data.Maybe (listToMaybe)
 import Database.PostgreSQL.Simple.FromField (FromField)
 
-class Monad m => MonadConnReader m where
+class MonadIO m => MonadPG m where
   askConn :: m Connection
 
-instance Monad m => MonadConnReader (ReaderT Connection m) where
+instance MonadIO m => MonadPG (ReaderT Connection m) where
   askConn = ask
 
-query :: (MonadIO m, MonadConnReader m, ToRow q, FromRow r)
-      => Query -> q -> m [r]
+query :: (MonadPG m, ToRow q, FromRow r) => Query -> q -> m [r]
 query = liftToMonadConstraints PG.query
 
-queryMaybe :: (MonadIO m, MonadConnReader m, ToRow q, FromRow r)
-           => Query -> q -> m (Maybe r)
+queryMaybe :: (MonadPG m, ToRow q, FromRow r) => Query -> q -> m (Maybe r)
 queryMaybe queryText q = listToMaybe <$> query queryText q
 
-querySingleField :: (MonadIO m, MonadConnReader m, ToRow q, FromField f)
-                 => Query -> q -> m f
+querySingleField :: (MonadPG m, ToRow q, FromField f) => Query -> q -> m f
 querySingleField = (fmap (fromOnly . head) .) . query
 
 
-query_ :: (MonadIO m, MonadConnReader m, FromRow r)
-       => Query -> m [r]
+query_ :: (MonadPG m, FromRow r) => Query -> m [r]
 query_ = liftToMonadConstraints_ PG.query_
 
-execute :: (MonadIO m, MonadConnReader m, ToRow q)
-        => Query -> q -> m Int64
+execute :: (MonadPG m, ToRow q) => Query -> q -> m Int64
 execute = liftToMonadConstraints PG.execute
 
-execute_ :: (MonadIO m, MonadConnReader m)
-         => Query -> m Int64
+execute_ :: MonadPG m => Query -> m Int64
 execute_ = liftToMonadConstraints_ PG.execute_
 
-executeMany :: (MonadIO m, MonadConnReader m, ToRow q) => Query -> [q] -> m Int64
+executeMany :: (MonadPG m, ToRow q) => Query -> [q] -> m Int64
 executeMany = liftToMonadConstraints PG.executeMany
 
-withTransaction :: (MonadIO m, MonadConnReader m) => ReaderT Connection IO a -> m a
+withTransaction :: MonadPG m => ReaderT Connection IO a -> m a
 withTransaction actions = do
   conn <- askConn
   let actionsIO = actions `runReaderT` conn
   liftIO $ PG.withTransaction conn actionsIO
 
-liftToMonadConstraints :: (MonadIO m, MonadConnReader m)
-                       => (Connection -> Query -> q -> IO a) -> (Query -> q -> m a)
+liftToMonadConstraints :: MonadPG m => (Connection -> Query -> q -> IO a) -> (Query -> q -> m a)
 liftToMonadConstraints f queryText params = do
   conn <- askConn
   liftIO $ f conn queryText params
 
-liftToMonadConstraints_ :: (MonadIO m, MonadConnReader m)
-                        => (Connection -> Query -> IO a) -> (Query -> m a)
+liftToMonadConstraints_ :: MonadPG m => (Connection -> Query -> IO a) -> (Query -> m a)
 liftToMonadConstraints_ f queryText = do
   conn <- askConn
   liftIO $ f conn queryText

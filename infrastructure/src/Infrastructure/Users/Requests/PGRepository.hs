@@ -47,19 +47,19 @@ import Core.Users.Requests.Domain.RequestStatus (RequestStatus(..))
 import Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
   (ByteStringParsableEnum, mkEnumFieldParser)
 import Infrastructure.Common.Persistence
-  (MonadConnReader, execute, executeMany, withTransaction, query, execute_, queryMaybe)
+  (MonadPG, execute, executeMany, withTransaction, query, execute_, queryMaybe)
 
 newtype RequestsRepositoryT m a = RequestsRepositoryT
   { runRequestsRepositoryT :: m a }
-  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnReader)
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadPG)
 
-instance (MonadIO m, MonadConnReader m) => RequestsRepository (RequestsRepositoryT m) where
+instance MonadPG m => RequestsRepository (RequestsRepositoryT m) where
   addRequestToRepo = addRequestToDb
   getIncomingRequestsFromRepo = getIncomingRequestsFromDb
   getRequestFromRepo = getRequestFromDb
   markRequestCompletedInRepo = markRequestCompletedInDb
 
-addRequestToDb :: (MonadIO m, MonadConnReader m) => Request 'Pending -> m ()
+addRequestToDb :: MonadPG m => Request 'Pending -> m ()
 addRequestToDb request =
   let (dbRequest, dbRequestItems) = toDb request
   in withTransaction $ do
@@ -72,7 +72,7 @@ addRequestToDb request =
       VALUES (?, ?, ?, ?, ?)
     |] dbRequestItems
 
-getIncomingRequestsFromDb :: (MonadIO m, MonadConnReader m) => SomeUserId -> m [SomeRequest]
+getIncomingRequestsFromDb :: MonadPG m => SomeUserId -> m [SomeRequest]
 getIncomingRequestsFromDb (SomeUserId recipientId) =
   map (uncurry toDomain) . normalize <$> query [sql|
     SELECT requestId, senderId, createdAt, isPending
@@ -99,8 +99,7 @@ getIncomingRequestsFromDb (SomeUserId recipientId) =
                                 , quantity, price
                      ) = (requestId, (DbRequest{..}, NonEmpty.singleton DbRequestItem{..}))
 
-getRequestFromDb :: (MonadIO m, MonadConnReader m)
-                 => SomeRequestId -> m (Maybe SomeRequest)
+getRequestFromDb :: MonadPG m => SomeRequestId -> m (Maybe SomeRequest)
 getRequestFromDb (SomeRequestId(RequestId requestId)) = do
   dbRequest <- queryMaybe [sql|
     SELECT requestId, senderId, recipientId, createdAt, isPending
@@ -112,8 +111,7 @@ getRequestFromDb (SomeRequestId(RequestId requestId)) = do
   |] (Only requestId)
   return $ toDomain <$> dbRequest <*> nonEmpty dbRequestItems
 
-markRequestCompletedInDb :: (MonadIO m, MonadConnReader m)
-                         => Request 'Completed -> m ()
+markRequestCompletedInDb :: MonadPG m => Request 'Completed -> m ()
 markRequestCompletedInDb Request{requestId = RequestId requestId} =
   void $ execute [sql|
     UPDATE requests SET isPending = FALSE
@@ -166,7 +164,7 @@ data DbRequest = DbRequest
   , isPending :: Bool
   } deriving (Generic, FromRow, ToRow)
 
-createRequestsTable :: (MonadIO m, MonadConnReader m) => m ()
+createRequestsTable :: MonadPG m => m ()
 createRequestsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS requests
   ( requestId UUID PRIMARY KEY NOT NULL
@@ -194,7 +192,7 @@ instance FromField DbRequestItemIdentityTag where
 instance ToField DbRequestItemIdentityTag where
   toField = Escape . fromString . show
 
-createRequestItemsTable :: (MonadIO m, MonadConnReader m) => m ()
+createRequestItemsTable :: MonadPG m => m ()
 createRequestItemsTable = void $ execute_ [sql|
   CREATE TYPE requestItemIdentityTag AS ENUM
   ( 'TextRequestItemIdentity'

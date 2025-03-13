@@ -16,7 +16,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Error.Class (MonadError)
 
 import Infrastructure (InfrastructureT(..))
-import Infrastructure.Common.Persistence (MonadConnReader(..))
+import Infrastructure.Common.Persistence (MonadPG(..))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID(..))
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime(..))
 import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching)
@@ -33,7 +33,7 @@ newtype AppM a = AppM { runAppM :: ReaderT Env Handler a }
 
 instance MonadUUID AppM where newUUID = liftIO V4.nextRandom
 instance MonadUTCTime AppM where currentTime = liftIO getCurrentTime
-instance MonadConnReader AppM where
+instance MonadPG AppM where
   askConn = do
     pool <- asks pgConnPool
     liftIO $ withResource pool return

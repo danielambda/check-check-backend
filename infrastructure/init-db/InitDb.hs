@@ -8,7 +8,7 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import Control.Monad.IO.Class (MonadIO)
 import System.Environment (getEnv)
 
-import Infrastructure.Common.Persistence (MonadConnReader, withTransaction)
+import Infrastructure.Common.Persistence (MonadPG, withTransaction)
 import Infrastructure.Receipts.PGRepository (createReceiptItemsTable)
 import Infrastructure.Users.PGRepository (createUsersTable, createBudgetsTable, createOtherUserIdsTable, createUserContactsTable)
 import Infrastructure.Users.Requests.PGRepository (createRequestsTable, createRequestItemsTable)
@@ -20,7 +20,7 @@ main = do
     >>= connectPostgreSQL . B.pack
     >>= runReaderT initDb
 
-initDb :: (MonadIO m, MonadConnReader m) => m ()
+initDb :: (MonadIO m, MonadPG m) => m ()
 initDb = withTransaction $ do
   createReceiptItemsTable
   createUsersTable

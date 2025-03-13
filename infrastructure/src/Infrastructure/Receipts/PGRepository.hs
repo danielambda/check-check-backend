@@ -29,25 +29,23 @@ import Core.Common.Operators ((^^.))
 import Core.Receipts.Domain.Receipt (Receipt, receiptItems, mkReceipt)
 import Core.Receipts.Domain.ReceiptItem (ReceiptItem(ReceiptItem))
 import Core.Receipts.MonadClasses.Repository (ReceiptsRepository (..))
-import Infrastructure.Common.Persistence (MonadConnReader, query, execute_, executeMany)
+import Infrastructure.Common.Persistence (MonadPG, query, execute_, executeMany)
 import Core.Common.Domain.RubKopecks (RubKopecks(..))
 
 newtype ReceiptsRepositoryT m a = ReceiptsRepositoryT
   { runReceiptsRepositoryT :: m a }
-  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadConnReader)
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadPG)
 
-instance (MonadIO m, MonadConnReader m) => ReceiptsRepository (ReceiptsRepositoryT m) where
+instance MonadPG m => ReceiptsRepository (ReceiptsRepositoryT m) where
   addReceiptToRepo = addReceiptToDb
   getReceiptFromRepo = getReceiptFromDb
 
-addReceiptToDb :: (MonadIO m, MonadConnReader m)
-               => Text -> Receipt -> m ()
+addReceiptToDb :: MonadPG m => Text -> Receipt -> m ()
 addReceiptToDb qr receipt = void $ executeMany [sql|
   INSERT INTO receiptItems (qr, index, name, price, quantity) VALUES (?, ?, ?, ?, ?)
 |] (toDb qr receipt)
 
-getReceiptFromDb :: (MonadIO m, MonadConnReader m)
-                 => Text -> m (Maybe Receipt)
+getReceiptFromDb :: MonadPG m => Text -> m (Maybe Receipt)
 getReceiptFromDb qr = do
   toDomain <$> getReceiptItemsFromDb
   where
@@ -80,7 +78,7 @@ data DbReceiptItem = DbReceiptItem
   , quantity :: Double
   } deriving (Generic, FromRow, ToRow)
 
-createReceiptItemsTable :: (MonadIO m, MonadConnReader m) => m ()
+createReceiptItemsTable :: MonadPG m => m ()
 createReceiptItemsTable = void $ execute_ [sql|
   CREATE TABLE IF NOT EXISTS receiptItems
   ( qr TEXT NOT NULL
