@@ -2,7 +2,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module WebAPI.Groups.Budget.ApplyDelta
   ( Dependencies
@@ -23,7 +22,7 @@ import CheckCheck.Contracts.Users (AuthenticatedUser(..))
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
 applyBudgetDeltaToUser :: Dependencies m => AuthenticatedUser -> UUID -> ServerT ApplyBudgetDeltaToUser m
-applyBudgetDeltaToUser AUser{ userId } groupId delta =
+applyBudgetDeltaToUser AUser{} groupId delta =
   Impl.applyBudgetDeltaToUser (SomeUserId groupId) (RubKopecks delta) >>= \case
     Right budget ->
       return $ toResp budget

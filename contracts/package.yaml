@@ -24,10 +24,9 @@ library:
   - time
 
   ghc-options:
-  - -Wall
+  - -Wno-partial-fields
   - -Wcompat
   - -Widentities
-  - -Wincomplete-record-updates
   - -Wincomplete-uni-patterns
   - -Wmissing-export-lists
   - -Wmissing-home-modules

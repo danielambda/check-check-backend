@@ -18,7 +18,7 @@ import CheckCheck.Contracts.Users (AuthenticatedUser(..))
 
 type Dependencies m = (Impl.Dependencies m, MonadError ServerError m)
 createBudget :: Dependencies m => AuthenticatedUser -> UUID -> ServerT CreateBudget m
-createBudget AUser{ userId } groupId CreateBudgetReqBody{..} =
+createBudget AUser{} groupId CreateBudgetReqBody{..} =
   Impl.create (SomeUserId groupId) Impl.Data
     { Impl.mInitialAmount = RubKopecks <$> initialBudget
     , Impl.mLowerBound = RubKopecks <$> lowerBound

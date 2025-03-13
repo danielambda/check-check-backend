@@ -43,8 +43,8 @@ data Env = Env
   , redisConnPool :: Pool Redis.Connection
   }
 
-askRedisConn :: AppM Redis.Connection
-askRedisConn = do
+_askRedisConn :: AppM Redis.Connection
+_askRedisConn = do
   pool <- asks redisConnPool
   liftIO $ withResource pool return
 

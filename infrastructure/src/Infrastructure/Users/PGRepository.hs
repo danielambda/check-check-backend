@@ -14,6 +14,8 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE TypeApplications #-}
 
+{-# OPTIONS_GHC -Wno-x-patrial #-}
+
 module Infrastructure.Users.PGRepository
   ( UsersRepositoryT(..)
   , createUsersTable
@@ -45,7 +47,9 @@ import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Domain.UserContact (UserContact (..))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Infrastructure.Common.Persistence
-  (MonadConnReader, execute, executeMany, withTransaction, query, queryMaybe, execute_)
+  ( MonadConnReader, execute, executeMany, withTransaction
+  , query, queryMaybe, querySingleField, execute_
+  )
 import SmartPrimitives.TextMaxLen (TextMaxLen)
 
 newtype UsersRepositoryT m a = UsersRepositoryT
@@ -121,7 +125,7 @@ getUserGroupFromDb (UserId userId) = withTransaction $ do
 userExistsInDb :: (MonadIO m, MonadConnReader m)
                => SomeUserId -> m Bool
 userExistsInDb (SomeUserId userId) =
-  fromOnly . head <$> query [sql|
+  querySingleField [sql|
     SELECT EXISTS(SELECT 1 FROM users WHERE userId = ?)
   |] (Only userId)
 

@@ -1,15 +1,17 @@
 {-# LANGUAGE FlexibleInstances #-}
 
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module Infrastructure.Common.Persistence
   ( MonadConnReader, askConn
-  , query, queryMaybe, query_
+  , query, queryMaybe, query_, querySingleField
   , execute, execute_
   , executeMany
   , withTransaction
   ) where
 
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
-import Database.PostgreSQL.Simple (Query, Connection, ToRow, FromRow)
+import Database.PostgreSQL.Simple (Query, Connection, ToRow, FromRow, Only (fromOnly))
 import qualified Database.PostgreSQL.Simple as PG
   ( query, query_, execute_
   , execute, executeMany
@@ -19,6 +21,7 @@ import qualified Database.PostgreSQL.Simple as PG
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Int (Int64)
 import Data.Maybe (listToMaybe)
+import Database.PostgreSQL.Simple.FromField (FromField)
 
 class Monad m => MonadConnReader m where
   askConn :: m Connection
@@ -33,6 +36,11 @@ query = liftToMonadConstraints PG.query
 queryMaybe :: (MonadIO m, MonadConnReader m, ToRow q, FromRow r)
            => Query -> q -> m (Maybe r)
 queryMaybe queryText q = listToMaybe <$> query queryText q
+
+querySingleField :: (MonadIO m, MonadConnReader m, ToRow q, FromField f)
+                 => Query -> q -> m f
+querySingleField = (fmap (fromOnly . head) .) . query
+
 
 query_ :: (MonadIO m, MonadConnReader m, FromRow r)
        => Query -> m [r]

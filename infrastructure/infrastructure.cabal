@@ -17,7 +17,6 @@ library
       Infrastructure.Users.PGRepository
       Infrastructure.Users.Requests.PGRepository
   other-modules:
-      Infrastructure.Common.Persistence.Internal
       Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
       Paths_infrastructure
   hs-source-dirs:
