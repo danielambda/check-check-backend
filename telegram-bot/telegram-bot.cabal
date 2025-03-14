@@ -12,6 +12,7 @@ executable telegram-bot
   main-is: Main.hs
   other-modules:
       AuthServiceClient
+      ClientMUtils
       Clients
       Paths_telegram_bot
   hs-source-dirs:

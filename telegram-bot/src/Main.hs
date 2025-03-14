@@ -10,32 +10,34 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module Main (main) where
 
 import Servant.Auth.Client (Token)
 import Telegram.Bot.API
-  ( BotName(..), Update, defaultTelegramClientEnv , userUsername
+  ( BotName(..), Update (updateMessage), defaultTelegramClientEnv , userUsername
   , responseResult, SomeReplyMarkup (SomeInlineKeyboardMarkup), InlineKeyboardMarkup (..)
-  , updateChatId
+  , updateChatId, Message (messageFrom)
   )
 import Telegram.Bot.Simple
   ( BotApp(..), Eff, startBot_, getEnvToken, ReplyMessage (replyMessageReplyMarkup), reply
   , actionButton, conversationBot, replyText
-  , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect, BotContext (botContextUser), toReplyMessage
+  , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect, BotContext (botContextUpdate), toReplyMessage
   )
 import Telegram.Bot.Simple.UpdateParser
   ( parseUpdate, command, commandWithBotName, callbackQueryDataRead )
 import Configuration.Dotenv (loadFile, defaultConfig)
-import Servant.Client (runClientM, ClientM, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv)
+import Servant.Client (runClientM, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv, matchUnion)
 
 import qualified Data.Text as T
 
 import CheckCheck.Contracts.Receipts (ReceiptResp (..), ReceiptItemResp (..))
 import Control.Applicative ((<|>))
-import Control.Monad.IO.Class (MonadIO(liftIO))
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask), asks)
-import Control.Monad (unless)
+import Control.Monad (unless, forM, (>=>))
 import Data.Functor ((<&>))
 import Data.Text (Text)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
@@ -44,22 +46,28 @@ import qualified Telegram.Bot.API as TG
 import SmartPrimitives.Positive (pattern Positive)
 import Clients
   ( ApiClient(..), apiClient
-  , UsersClient (..)
-  , OutgointRequestsClient (..), ContactsClient (ContactsClient, getContacts)
+  , UsersClient(..)
+  , OutgointRequestsClient(..), ContactsClient(..)
   )
-import Data.UUID (UUID, fromString, toString)
-import qualified AuthServiceClient as Auth (getJwtToken)
-import Data.ByteString.Lazy (ByteString, fromStrict)
-import Data.Text.Encoding (encodeUtf16BE)
+import ClientMUtils
+  ( runReq, runReq_, HasKeyedClientEnv(..), FromClientError(..), FromClientError )
+import CheckCheck.Contracts.Users.Contacts (ContactResp(..), CreateContactReqBody (..))
 import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody(..), IndexSelectionReqBody (..))
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
-import Data.Maybe (fromJust)
-import SmartPrimitives.TextMaxLen (TextMaxLen)
-import CheckCheck.Contracts.Users.Contacts (ContactResp(..))
+import Data.UUID (UUID, toString)
+import AuthServiceClient
+    ( authTelegram, UserQuery(..), getUser, AuthServiceUser(..) )
+import SmartPrimitives.TextMaxLen (TextMaxLen, unTextMaxLen, mkTextMaxLen)
+import System.Environment (getEnv)
+import Servant.API (WithStatus)
+import CheckCheck.Contracts.Users (UserResp(..))
+import SmartPrimitives.TextLenRange (unTextLenRange)
+import Control.Monad.Error.Class (MonadError)
+import Control.Monad.Except (ExceptT (ExceptT), runExceptT)
 
-currentUser :: AppM TG.User
+currentUser :: AppM (Maybe TG.User)
 currentUser = AppM $ ReaderT $ const $
-  asks botContextUser
+  asks $ botContextUpdate >=> updateMessage >=> messageFrom
 
 data ReceiptItem = ReceiptItem
   { index :: Int
@@ -82,49 +90,56 @@ data State
   = InitialState
   | SelectingReceiptItems Text [(Bool, ReceiptItem)]
   | SelectingRequestRecipient Text (NonEmpty Int)
+  deriving Show
 
 data Transition
-  = Id
+  = GetCurrentState
+  | Id
+  | Start
   | ShowReceipt Text
+  | AddContact Text
   | StartSelectingReceiptItems Text [ReceiptItem]
   | SelectReceiptItem Int
   | StartSelectingRequestRecipient
   | SelectRequestRecipient UUID
   deriving (Read, Show)
 
-mkBotApp :: ClientEnv -> ClientEnv -> ByteString -> BotName -> BotApp State Transition
-mkBotApp clientEnv authClientEnv secret botName = BotApp
+mkBotApp :: ClientEnv -> ClientEnv -> String -> BotName -> BotApp State Transition
+mkBotApp backendClientEnv authClientEnv secret botName = BotApp
   { botInitialModel = InitialState
   , botAction = flip $ decideTransition botName
   , botHandler = botHandler
   , botJobs = []
-  }
-  where
-    botHandler action model = nt $ handleTransition action model
-    nt :: Eff' action model -> Eff action model
+  } where
+    botHandler = fmap nt . handleTransition
+    nt :: Eff' transition state -> Eff transition state
     nt = flip runReaderT Env{..}
 
+newtype AppM a = AppM { _unAppM :: ReaderT Env (ExceptT AppError BotM) a }
+  deriving (Functor, Applicative, Monad, MonadIO, MonadReader Env, MonadError AppError)
+
+newtype AppError = AppClientError ClientError
+  deriving (Show)
+
+instance FromClientError AppError where
+  fromClientError = AppClientError
+
 data Env = Env
-  { clientEnv :: ClientEnv
+  { backendClientEnv :: ClientEnv
   , authClientEnv :: ClientEnv
-  , secret :: ByteString
+  , secret :: String
   }
 
-newtype AppM a = AppM { _runAppM :: ReaderT Env BotM a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader Env)
+instance HasKeyedClientEnv Env "backend" where
+  getClientEnv _ = backendClientEnv
 
-runReq :: ClientM a -> AppM (Either ClientError a)
-runReq req = do
-  clientEnv <- asks clientEnv
-  liftIO $ runClientM req clientEnv
-
-runAuthReq :: ClientM a -> AppM (Either ClientError a)
-runAuthReq req = do
-  authClientEnv <- asks authClientEnv
-  liftIO $ runClientM req authClientEnv
+instance HasKeyedClientEnv Env "auth" where
+  getClientEnv _ = authClientEnv
 
 tg :: BotM a -> AppM a
-tg = AppM . ReaderT . const
+tg = AppM
+   . ReaderT . const
+   . ExceptT . fmap Right
 
 type Eff' action = ReaderT Env (Eff action)
 
@@ -135,7 +150,9 @@ infix 0 <#
 (<#) :: GetAction a action => state -> AppM a -> Eff' action state
 state <# AppM app = do
   env <- ask
-  let bot = runReaderT app env
+  let bot = runExceptT (runReaderT app env) >>= \case
+        Right a -> return a
+        Left err -> error $ show err
   ReaderT $ const $ withEffect bot state
 
 divide :: Int -> Double -> Double
@@ -155,21 +172,22 @@ process = fmap
       <> " rub"
     )
 
-getJwtToken :: TG.User -> AppM Token
-getJwtToken user = do
+authViaTelegram :: TG.User -> AppM Token
+authViaTelegram user = do
   secret <- asks secret
-  runAuthReq (Auth.getJwtToken secret user) >>= \case
-    Left _ -> getJwtToken user
-    Right (Right token) -> return token
-    Right (Left err) -> error $ "jose error" <> show err
+  runReq $ authTelegram secret user
 
 decideTransition :: BotName -> State -> Update -> Maybe Transition
-decideTransition (BotName botName) state = parseUpdate parser
+decideTransition (BotName botName) state = parseUpdate $
+  parser <|> GetCurrentState <$ command' "state"
   where
-    command' = liftA2 (<|>) command (commandWithBotName botName)
+    command' cmd = command cmd <|> commandWithBotName botName cmd
 
     parser = case state of
-      InitialState -> ShowReceipt <$> (command' "qr" <|> command' "receipt")
+      InitialState
+         -> ShowReceipt <$> (command' "qr" <|> command' "receipt")
+        <|> AddContact <$> command' "contact"
+        <|> Start <$ command' "start"
 
       SelectingReceiptItems{} -> do
         transition <- callbackQueryDataRead
@@ -191,29 +209,118 @@ decideTransition (BotName botName) state = parseUpdate parser
           isAllowed _ = False
 
 handleTransition :: Transition -> State -> Eff' Transition State
+handleTransition GetCurrentState state = state <# do tg $ replyText $ tshow state
+handleTransition Id state = pure state
 handleTransition transition InitialState = case transition of
+  Start -> InitialState <# do
+    currentUser >>= \case
+      Nothing -> return ()
+      Just user -> do
+        token <- authViaTelegram user
+        let UsersClient{ getMe }  = mkUsersClient apiClient token
+        UserResp{ username } <- runReq getMe
+        tg $ replyText $ "Nice to see you, " <> unTextLenRange username
+
   ShowReceipt qr -> InitialState <# do
     let ApiClient{ getReceipt } = apiClient
-    runReq (getReceipt qr) >>= \case
-      Left err -> do
-        liftIO $ putStrLn $ "Error: " <> show err
-        return Id
-      Right (ReceiptResp items) -> do
-        let items' = process items
-        let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
-        let itemsButtons = items'
-              <&> (:[])
-               .  \(index, item) -> actionButton item (SelectReceiptItem index)
-        let buttons = itemsButtons ++ [[confirmButton]]
-        let msg' = "Scanned receipt items: "
-              { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-                { inlineKeyboardMarkupInlineKeyboard = buttons }
-              }
-        tg $ reply msg'
-        return $ StartSelectingReceiptItems qr $ items
-          <&> \ReceiptItemResp{ price = Positive price, quantity = Positive quantity, .. } ->
-            ReceiptItem{..}
+    ReceiptResp items <- runReq (getReceipt qr)
+    let items' = process items
+    let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
+    let itemsButtons = items'
+          <&> (:[])
+           .  \(index, item) -> actionButton item (SelectReceiptItem index)
+    let buttons = itemsButtons ++ [[confirmButton]]
+    let msg' = "Scanned receipt items: "
+          { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
+            { inlineKeyboardMarkupInlineKeyboard = buttons }
+          }
+    tg $ reply msg'
+    return $ StartSelectingReceiptItems qr $ items
+      <&> \ReceiptItemResp{ price = Positive price, quantity = Positive quantity, .. } ->
+        ReceiptItem{..}
+
   StartSelectingReceiptItems qr items -> pure $ SelectingReceiptItems qr (map (False,) items)
+
+  AddContact content -> InitialState <# currentUser >>= \case
+    Nothing -> return ()
+    Just user -> authViaTelegram user >>= \token ->
+      case T.uncons content of
+      Nothing -> do
+        tg $ replyText "Please, enter non empty username to add to contacts"
+      Just ('@', content') -> case T.span (== ' ') content' of
+        (contactTgUsername, "") -> do
+          u <- runReq $ getUser token (UserTgUsernameQuery contactTgUsername)
+          if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
+              let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
+              let reqBody = CreateContactReqBody
+                    { contactUserId = userId
+                    , contactName = Nothing
+                    }
+              runReq_ $ createContact reqBody
+              tg $ replyText $ "contact @" <> contactTgUsername <> " successfully added"
+             | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+              tg $ replyText $ T.unlines
+                [ "User @" <> contactTgUsername <> " is not registered in check-check"
+                , "Send them the following link to join:"
+                ]
+              tg $ replyText "https://t.me/CheckCheckTgBot?start=start" -- TODO remove the hardlink
+              | otherwise -> error "unreachable"
+        (contactTgUsername, mContactName) -> case mkTextMaxLen mContactName of
+          Nothing -> tg $ replyText $
+            "contact name " <> mContactName <> " is too long, 50 symbols is the max length"
+          Just contactName -> do
+            u <- runReq $ getUser token (UserTgUsernameQuery contactTgUsername)
+            if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
+                let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
+                let reqBody = CreateContactReqBody
+                      { contactUserId = userId
+                      , contactName = Just contactName
+                      }
+                runReq_ (createContact reqBody)
+                tg $ replyText $ "contact @" <> contactTgUsername <> " successfully added as " <> mContactName
+               | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+                tg $ replyText $ T.unlines
+                  [ "User @" <> contactTgUsername <> " is not registered in check-check"
+                  , "Send them the following link to join:"
+                  ]
+                tg $ replyText "https://t.me/CheckCheckTgBot?start=start" -- TODO remove the hardlink
+               | otherwise -> error "unreachable"
+      _ -> case T.span (== ' ') content of
+        (contactUsername, "") -> do
+          u <- runReq $ getUser token (UserUsernameQuery contactUsername)
+          if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
+              let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
+              let reqBody = CreateContactReqBody
+                    { contactUserId = userId
+                    , contactName = Nothing
+                    }
+              runReq_ (createContact reqBody)
+              tg $ replyText $
+                  "contact " <> contactUsername <> " successfully added"
+              | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+              tg $ replyText $
+                "User " <> contactUsername <> " is not registered in check-check"
+              | otherwise -> error "unreachable"
+
+        (contactUsername, mContactName) -> case mkTextMaxLen mContactName of
+          Nothing -> tg $ replyText $
+            "contact name " <> mContactName <> " is too long, 50 symbols is the max length"
+          Just contactName -> do
+            u <- runReq $ getUser token (UserUsernameQuery contactUsername)
+            if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
+                let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
+                let reqBody = CreateContactReqBody
+                      { contactUserId = userId
+                      , contactName = Just contactName
+                      }
+                runReq_ (createContact reqBody)
+                tg $ replyText $
+                    "contact " <> contactUsername <> " successfully added as " <> mContactName
+               | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+                tg $ replyText $
+                  "User " <> contactUsername <> " is not registered in check-check"
+               | otherwise -> error "unreachable"
+
   _ -> undefined
 
 handleTransition transition (SelectingReceiptItems qr items) = case transition of
@@ -243,20 +350,22 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
         let replyMsgText = T.unlines
               $ ("В сумме на: " <> tshow overallSum)
               : (view #name <$> toList filteredItems)
-        token <- getJwtToken =<< currentUser
-        let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
-        runReq getContacts >>= \case
-          Left err -> liftIO $ print err
-          Right contactsResp -> do
+        currentUser >>= \case
+          Nothing -> return ()
+          Just user -> do
+            token <- authViaTelegram user
+            let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
+            contactsResp <- runReq getContacts
             let contacts = contactsResp <&>
                   \ContactResp{..} -> UserContact{ mContactName = contactName, ..}
+            buttons <- forM contacts $ \UserContact{..} -> do
+              let name = maybe "aboba" unTextMaxLen mContactName
+              -- TODO pull usernames for contacts without contact name
+              return $ actionButton name (SelectRequestRecipient contactUserId)
             let replyMsg = (toReplyMessage replyMsgText)
                   { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-                    { inlineKeyboardMarkupInlineKeyboard = [[
-                      actionButton "send to aboba" $ SelectRequestRecipient $ fromJust $ fromString "1e8dd476-f769-48b4-8af7-58fd5095bc06"
-                    ]] }
+                    { inlineKeyboardMarkupInlineKeyboard = buttons <&> (:[]) }
                   }
-
             tg $ reply replyMsg
 
       Nothing -> SelectingReceiptItems qr items <# do
@@ -264,22 +373,23 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
   _ -> undefined
 
 handleTransition transition (SelectingRequestRecipient qr indices) = case transition of
-  SelectRequestRecipient recipientId -> SelectingRequestRecipient qr indices <# do
-    token <- getJwtToken =<< currentUser
-    let OutgointRequestsClient{ sendRequest } = outgoingRequestsClient $ mkUsersClient apiClient token
-    let reqBody = SendReceiptItemsRequestReqBody
-          { receiptQr = qr
-          , indexSelections = singleton $
-            IndexSelectionReqBody{..}
-          }
-    runReq (sendRequest reqBody) >>= \case
-      Right _ -> tg $ replyText $ T.pack $ toString recipientId
-      Left err -> liftIO $ print err
-    return ()
+  SelectRequestRecipient recipientId -> InitialState <# do
+    currentUser >>= \case
+      Nothing -> return ()
+      Just user -> do
+        token <- authViaTelegram user
+        let OutgointRequestsClient{ sendRequest } = outgoingRequestsClient $ mkUsersClient apiClient token
+        let reqBody = SendReceiptItemsRequestReqBody
+              { receiptQr = qr
+              , indexSelections = singleton $ IndexSelectionReqBody{..}
+              }
+        runReq_ $ sendRequest reqBody
+        tg $ replyText $ T.pack $ toString recipientId
+        return ()
   _ -> undefined
 
-run :: TG.Token -> IO ()
-run token = do
+run :: String -> TG.Token -> IO ()
+run authApiKey token = do
   tgEnv <- defaultTelegramClientEnv token
   mBotName <- either (error . show) (userUsername . responseResult) <$> runClientM TG.getMe tgEnv
   let botName = maybe (error "bot name is not defined") BotName mBotName
@@ -288,16 +398,15 @@ run token = do
   let clientEnv = mkClientEnv manager (BaseUrl Http "localhost" 8080 "")
   let authClientEnv = mkClientEnv manager (BaseUrl Http "localhost" 5183 "")
 
-  let TG.Token secret' = token
-  let secret = fromStrict $ encodeUtf16BE secret'
-  let botApp = conversationBot updateChatId $ mkBotApp clientEnv authClientEnv secret botName
+  let botApp = conversationBot updateChatId $ mkBotApp clientEnv authClientEnv authApiKey botName
   startBot_ botApp tgEnv
-
 
 main :: IO ()
 main = do
   loadFile defaultConfig
 
   putStrLn "The bot is running"
-  run =<< getEnvToken "TELEGRAM_BOT_TOKEN"
+  authApiKey <- getEnv "AUTH_API_KEY"
+  token <- getEnvToken "TELEGRAM_BOT_TOKEN"
+  run authApiKey token
 

@@ -30,7 +30,7 @@ type GetContacts =
   Get '[JSON] [ContactResp]
 
 type CreateContact =
-  ReqBody '[JSON] CreateContactReqBody :> Post '[JSON] ContactResp
+  ReqBody '[JSON] CreateContactReqBody :> Post '[JSON] NoContent
 
 type DeleteContact =
   Capture "contactUserId" UUID :> Delete '[JSON] NoContent

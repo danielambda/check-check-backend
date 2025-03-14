@@ -1,5 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Clients
   ( ApiClient(..)
@@ -8,6 +11,7 @@ module Clients
   , ContactsClient(..)
   , OutgointRequestsClient(..)
   , apiClient
+  , BackendClientM(..)
   ) where
 
 import Data.Proxy (Proxy(..))
@@ -15,7 +19,7 @@ import Data.Text (Text)
 import Data.UUID (UUID)
 import Servant.API ((:<|>)(..), NoContent)
 import Servant.Auth.Client (Token)
-import Servant.Client (ClientM, client)
+import Servant.Client (ClientM, client, hoistClient)
 
 import CheckCheck.Contracts.API (API)
 import CheckCheck.Contracts.Groups (CreateGroupReqBody, GroupResp)
@@ -23,38 +27,49 @@ import CheckCheck.Contracts.Receipts (ReceiptResp)
 import CheckCheck.Contracts.Users (UserResp)
 import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody, RequestResp)
 import CheckCheck.Contracts.Users.Contacts (CreateContactReqBody, ContactResp)
+import ClientMUtils (AsKeyedClientM (..))
+
+newtype BackendClientM a = BackendClientM { unBackendClientM :: ClientM a }
+  deriving (Functor, Applicative, Monad)
+
+instance AsKeyedClientM BackendClientM "backend" where
+  asClientM = unBackendClientM
 
 data ApiClient = ApiClient
-  { getReceipt :: Text -> ClientM ReceiptResp
+  { getReceipt :: Text -> BackendClientM ReceiptResp
   , mkGroupsClient :: Token -> GroupsClient
   , mkUsersClient :: Token -> UsersClient
   }
 
 data GroupsClient = GroupsClient
-  { createGroup :: CreateGroupReqBody -> ClientM GroupResp
-  , getGroup :: UUID -> ClientM GroupResp
-  , getAllGroups :: ClientM [GroupResp]
+  { createGroup :: CreateGroupReqBody -> BackendClientM GroupResp
+  , getGroup :: UUID -> BackendClientM GroupResp
+  , getAllGroups :: BackendClientM [GroupResp]
   }
 
 data UsersClient = UsersClient
-  { getMe :: ClientM UserResp
+  { getMe :: BackendClientM UserResp
   , contactsClient :: ContactsClient
   , outgoingRequestsClient :: OutgointRequestsClient
   }
 
 data ContactsClient = ContactsClient
-  { createContact :: CreateContactReqBody -> ClientM ContactResp
-  , getContacts :: ClientM [ContactResp]
-  , deletaContact :: UUID -> ClientM NoContent
+  { createContact :: CreateContactReqBody -> BackendClientM NoContent
+  , getContacts :: BackendClientM [ContactResp]
+  , deletaContact :: UUID -> BackendClientM NoContent
   }
 
 newtype OutgointRequestsClient = OutgointRequestsClient
-  { sendRequest :: SendRequestReqBody -> ClientM [RequestResp] }
+  { sendRequest :: SendRequestReqBody -> BackendClientM [RequestResp] }
 
 apiClient :: ApiClient
 apiClient = ApiClient{..}
   where
-    getReceipt :<|> groupsClient :<|> usersClient = client $ Proxy @API
+    api = Proxy :: Proxy API
+    nt :: ClientM a -> BackendClientM a
+    nt = BackendClientM
+
+    getReceipt :<|> groupsClient :<|> usersClient = hoistClient api nt $ client api
 
     mkGroupsClient token = GroupsClient{..}
       where

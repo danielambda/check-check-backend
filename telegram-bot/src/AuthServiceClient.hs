@@ -2,72 +2,95 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
-module AuthServiceClient (getJwtToken) where
+module AuthServiceClient
+  ( authTelegram, getUser
+  , AuthServiceUser(..), UserQuery(..)
+  ) where
 
-import Control.Monad.Identity (Identity(runIdentity, Identity))
-import Control.Monad.IO.Class (MonadIO(..))
-import Crypto.JOSE (Alg(HS256))
 import Data.Aeson (ToJSON, FromJSON)
-import Data.ByteString.Lazy (ByteString)
-import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text (Text)
-import Data.Time (UTCTime, getCurrentTime, addUTCTime, secondsToNominalDiffTime)
+import Data.UUID (UUID)
 import GHC.Generics (Generic)
-import qualified Crypto.JOSE as Jose
-import qualified Crypto.JWT as Jose
-import qualified Data.ByteString as BS
-import Servant.API (JSON, (:>), Post)
-import Servant.Auth (Auth, JWT)
+import Servant.API (JSON, (:>), Post, Header', Required, Strict, ReqBody, Capture, ToHttpApiData (toUrlPiece), UVerb, StdMethod (GET), Union, HasStatus(StatusOf), WithStatus)
 import Servant.Auth.Client (Token (Token))
-import Servant.Auth.JWT (ToJWT(encodeJWT))
-import Servant.Client (client, ClientM)
-import Telegram.Bot.API (UserId, User (..))
-import Data.Functor ((<&>))
+import Servant.Client (client, ClientM, hoistClient)
+import Telegram.Bot.API (UserId (..), User (..))
+import qualified Data.Text as T
+import qualified Data.UUID as UUID
+import Servant.Auth (Auth, JWT)
+import CheckCheck.Contracts.Users (AuthenticatedUser)
+import ClientMUtils (AsKeyedClientM (..))
 
-type AuthServiceAPI = "auth" :> "telegram" :> Auth '[JWT] AuthData :> Post '[JSON] AuthResult
+type Header = Header' [Required, Strict]
+type AuthTelegram = "auth" :> "telegram" :>
+  ReqBody '[JSON] TgAuthData :> Header "x-api-key" String :> Post '[JSON] AuthResult
 
-data AuthData = AuthData
-  { userId :: UserId
+type GetUser = "users" :> Auth '[JWT] AuthenticatedUser
+  :> Capture "query" UserQuery :> UVerb 'GET '[JSON] '[AuthServiceUser, WithStatus 404 Text]
+
+data TgAuthData = TgAuthData
+  { userId :: Integer
   , username :: Text
-  } deriving (Generic, ToJWT, ToJSON)
+  } deriving (Generic, ToJSON)
 
 newtype AuthResult = AuthResult
   { token :: Text }
-  deriving (Generic, FromJSON)
+  deriving stock (Generic)
+  deriving anyclass (FromJSON)
 
-authServiceClient :: Token -> ClientM AuthResult
-authServiceClient = client $ Proxy @AuthServiceAPI
+data UserQuery
+  = UserUserIdQuery UUID
+  | UserUsernameQuery Text
+  | UserTgUserIdQuery Int
+  | UserTgUsernameQuery Text
 
-getJwtToken :: ByteString -> User -> ClientM (Either Jose.Error Token)
-getJwtToken secret User{ userId, userUsername } = do
-  let username = fromMaybe (error "null username") userUsername
-  let jwk = Jose.fromOctets secret
-  let jwtAlg = HS256
-  expiration <- liftIO $ getCurrentTime <&> addUTCTime (secondsToNominalDiffTime 3600)
-  liftIO (makeJWT jwk jwtAlg expiration AuthData{..}) >>= either
-    (return . Left)
-    (fmap (Right . authResultToToken) . authServiceClient)
+instance ToHttpApiData UserQuery where
+  toUrlPiece (UserUserIdQuery userId) = "user-id:" <> UUID.toText userId
+  toUrlPiece (UserUsernameQuery username) = "username:" <> username
+  toUrlPiece (UserTgUserIdQuery tgUserId) = "tg-user-id:" <> T.pack (show tgUserId)
+  toUrlPiece (UserTgUsernameQuery tgUsername) = "tg-username:" <> tgUsername
+
+newtype AuthServiceClientM a = AuthServiceClientM { unAuthServiceClientM :: ClientM a }
+  deriving newtype (Functor, Applicative, Monad)
+
+instance AsKeyedClientM AuthServiceClientM "auth" where
+  asClientM = unAuthServiceClientM
+
+data AuthServiceUser = AuthServiceUser
+  { userId :: UUID
+  , username :: Text
+  , tgUserId :: Maybe Int
+  , tgUsername :: Maybe Text
+  } deriving (Generic, FromJSON)
+instance HasStatus AuthServiceUser where type StatusOf AuthServiceUser = 200
+
+getUser :: Token -> UserQuery -> AuthServiceClientM (Union '[AuthServiceUser, WithStatus 404 Text])
+getUser = hoistClient endpoint nt $ client endpoint
+  where
+    endpoint = Proxy :: Proxy GetUser
+    nt = AuthServiceClientM
+
+authTelegram :: String -> User -> AuthServiceClientM Token
+authTelegram apiKey User{ userId = UserId userId, userUsername = Just username } = do
+  let authData = TgAuthData{..}
+  authResultToToken <$> authTelegram' authData apiKey
   where
     authResultToToken = Token . encodeUtf8 . token
 
--- partially from servant-auth-server package
-makeJWT :: (Jose.MonadRandom m, Jose.AsError e, ToJWT a)
-        => Jose.JWK -> Jose.Alg -> UTCTime -> a -> m (Either e Token)
-makeJWT jwk alg expiry a = Jose.runJOSE $ do
-  ejwt <- Jose.signClaims jwk
-                          (Jose.newJWSHeader ((), alg))
-                          (addExp $ encodeJWT a)
-  return $ Token $ BS.toStrict $ Jose.encodeCompact ejwt
-  where
-   addExp = Jose.claimExp ?~ Jose.NumericDate expiry
-     where setter ?~ value = runIdentity . setter (const $ Identity $ Just value)
-
-
+    authTelegram' = hoistClient endpoint nt $ client endpoint
+      where
+        endpoint = Proxy :: Proxy AuthTelegram
+        nt = AuthServiceClientM
+authTelegram _ _ = error "user does not have a username"
 
