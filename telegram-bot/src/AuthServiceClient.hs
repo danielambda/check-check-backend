@@ -10,6 +10,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module AuthServiceClient
   ( authTelegram, getUser
@@ -31,10 +32,11 @@ import qualified Data.UUID as UUID
 import Servant.Auth (Auth, JWT)
 import CheckCheck.Contracts.Users (AuthenticatedUser)
 import ClientMUtils (AsKeyedClientM (..))
+import Data.Time (UTCTime)
 
 type Header = Header' [Required, Strict]
 type AuthTelegram = "auth" :> "telegram" :>
-  ReqBody '[JSON] TgAuthData :> Header "x-api-key" String :> Post '[JSON] AuthResult
+  ReqBody '[JSON] TgAuthData :> Header "x-api-key" String :> Post '[JSON] TgAuthResult
 
 type GetUser = "users" :> Auth '[JWT] AuthenticatedUser
   :> Capture "query" UserQuery :> UVerb 'GET '[JSON] '[AuthServiceUser, WithStatus 404 Text]
@@ -44,10 +46,10 @@ data TgAuthData = TgAuthData
   , username :: Text
   } deriving (Generic, ToJSON)
 
-newtype AuthResult = AuthResult
-  { token :: Text }
-  deriving stock (Generic)
-  deriving anyclass (FromJSON)
+data TgAuthResult = TgAuthResult
+  { token :: Text
+  , expirationTime :: UTCTime
+  } deriving (Generic, FromJSON)
 
 data UserQuery
   = UserUserIdQuery UUID
@@ -81,12 +83,13 @@ getUser = hoistClient endpoint nt $ client endpoint
     endpoint = Proxy :: Proxy GetUser
     nt = AuthServiceClientM
 
-authTelegram :: String -> User -> AuthServiceClientM Token
+authTelegram :: String -> User -> AuthServiceClientM (Token, UTCTime)
 authTelegram apiKey User{ userId = UserId userId, userUsername = Just username } = do
   let authData = TgAuthData{..}
   authResultToToken <$> authTelegram' authData apiKey
   where
-    authResultToToken = Token . encodeUtf8 . token
+    authResultToToken TgAuthResult{ expirationTime, token } =
+      (Token $ encodeUtf8 token, expirationTime)
 
     authTelegram' = hoistClient endpoint nt $ client endpoint
       where

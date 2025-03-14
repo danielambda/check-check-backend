@@ -4,14 +4,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Clients
+module BackendClient
   ( ApiClient(..)
   , GroupsClient(..)
   , UsersClient(..)
   , ContactsClient(..)
   , OutgointRequestsClient(..)
   , apiClient
-  , BackendClientM(..)
+  , BackendClientM
   ) where
 
 import Data.Proxy (Proxy(..))

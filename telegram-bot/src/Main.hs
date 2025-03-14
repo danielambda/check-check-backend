@@ -15,59 +15,57 @@
 
 module Main (main) where
 
-import Servant.Auth.Client (Token)
 import Telegram.Bot.API
-  ( BotName(..), Update (updateMessage), defaultTelegramClientEnv , userUsername
+  ( BotName(..), Update (updateMessage, updateCallbackQuery), defaultTelegramClientEnv , userUsername
   , responseResult, SomeReplyMarkup (SomeInlineKeyboardMarkup), InlineKeyboardMarkup (..)
-  , updateChatId, Message (messageFrom)
+  , updateChatId, Message (messageFrom), CallbackQuery (callbackQueryFrom)
   )
 import Telegram.Bot.Simple
   ( BotApp(..), Eff, startBot_, getEnvToken, ReplyMessage (replyMessageReplyMarkup), reply
   , actionButton, conversationBot, replyText
   , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect, BotContext (botContextUpdate), toReplyMessage
   )
-import Telegram.Bot.Simple.UpdateParser
-  ( parseUpdate, command, commandWithBotName, callbackQueryDataRead )
-import Configuration.Dotenv (loadFile, defaultConfig)
-import Servant.Client (runClientM, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv, matchUnion)
-
-import qualified Data.Text as T
-
+import AuthServiceClient ( authTelegram, UserQuery(..), getUser, AuthServiceUser(..) )
+import BackendClient (ApiClient(..), apiClient, UsersClient(..), OutgointRequestsClient(..), ContactsClient(..))
 import CheckCheck.Contracts.Receipts (ReceiptResp (..), ReceiptItemResp (..))
-import Control.Applicative ((<|>))
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask), asks)
-import Control.Monad (unless, forM, (>=>))
-import Data.Functor ((<&>))
-import Data.Text (Text)
-import Network.HTTP.Client (defaultManagerSettings, newManager)
-import Optics (LabelOptic (labelOptic), A_Getter, to, unsafeFiltered, (%), (&), traversed, _1, _2, (.~), (^.), view)
-import qualified Telegram.Bot.API as TG
-import SmartPrimitives.Positive (pattern Positive)
-import Clients
-  ( ApiClient(..), apiClient
-  , UsersClient(..)
-  , OutgointRequestsClient(..), ContactsClient(..)
-  )
-import ClientMUtils
-  ( runReq, runReq_, HasKeyedClientEnv(..), FromClientError(..), FromClientError )
 import CheckCheck.Contracts.Users.Contacts (ContactResp(..), CreateContactReqBody (..))
 import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody(..), IndexSelectionReqBody (..))
-import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
-import Data.UUID (UUID, toString)
-import AuthServiceClient
-    ( authTelegram, UserQuery(..), getUser, AuthServiceUser(..) )
-import SmartPrimitives.TextMaxLen (TextMaxLen, unTextMaxLen, mkTextMaxLen)
-import System.Environment (getEnv)
-import Servant.API (WithStatus)
 import CheckCheck.Contracts.Users (UserResp(..))
-import SmartPrimitives.TextLenRange (unTextLenRange)
+import ClientMUtils (runReq, runReq_, HasKeyedClientEnv(..), FromClientError(..), FromClientError)
+import Configuration.Dotenv (loadFile, defaultConfig)
+import Control.Applicative ((<|>))
 import Control.Monad.Error.Class (MonadError)
-import Control.Monad.Except (ExceptT (ExceptT), runExceptT)
+import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask), asks, MonadTrans (lift))
+import Control.Monad.State (StateT(runStateT), MonadState (get, put))
+import Control.Monad (unless, forM, (>=>))
+import Data.Functor ((<&>))
+import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
+import Data.Maybe (fromJust)
+import Data.Text (Text)
+import Data.Time (getCurrentTime, UTCTime, addUTCTime, secondsToNominalDiffTime)
+import Data.UUID (UUID, toString)
+import Network.HTTP.Client (defaultManagerSettings, newManager)
+import Optics (LabelOptic (labelOptic), A_Getter, to, unsafeFiltered, (%), (&), traversed, _1, _2, (.~), (^.), view)
+import qualified Data.Text as T
+import qualified Telegram.Bot.API as TG
+import Servant.API (WithStatus)
+import Servant.Auth.Client (Token)
+import Servant.Client (runClientM, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv, matchUnion)
+import SmartPrimitives.Positive (pattern Positive)
+import SmartPrimitives.TextLenRange (unTextLenRange)
+import SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen)
+import System.Environment (getEnv)
+import Telegram.Bot.Simple.UpdateParser (parseUpdate, command, commandWithBotName, callbackQueryDataRead)
 
-currentUser :: AppM (Maybe TG.User)
-currentUser = AppM $ ReaderT $ const $
-  asks $ botContextUpdate >=> updateMessage >=> messageFrom
+-- TODO remove this function and replace it with users parsed alongside with transitions
+currentUser :: AppM TG.User
+currentUser = AppM $ lift $ do
+  userFromMessage <- asks $ botContextUpdate >=> updateMessage >=> messageFrom
+  userFromCallback <- asks $ botContextUpdate >=> updateCallbackQuery .> fmap callbackQueryFrom
+  return $ fromJust $ userFromMessage <|> userFromCallback
+  where (.>) = flip (.)
 
 data ReceiptItem = ReceiptItem
   { index :: Int
@@ -102,6 +100,7 @@ data Transition
   | SelectReceiptItem Int
   | StartSelectingRequestRecipient
   | SelectRequestRecipient UUID
+  | CancelSelectingRequestRecipient
   deriving (Read, Show)
 
 mkBotApp :: ClientEnv -> ClientEnv -> String -> BotName -> BotApp State Transition
@@ -115,8 +114,15 @@ mkBotApp backendClientEnv authClientEnv secret botName = BotApp
     nt :: Eff' transition state -> Eff transition state
     nt = flip runReaderT Env{..}
 
-newtype AppM a = AppM { _unAppM :: ReaderT Env (ExceptT AppError BotM) a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader Env, MonadError AppError)
+newtype AppM a = AppM
+  { _unAppM :: ReaderT Env (StateT (Maybe (Token, UTCTime)) (ExceptT AppError BotM)) a }
+  deriving
+    ( Functor, Applicative
+    , Monad, MonadIO
+    , MonadReader Env
+    , MonadState (Maybe (Token, UTCTime))
+    , MonadError AppError
+    )
 
 newtype AppError = AppClientError ClientError
   deriving (Show)
@@ -137,9 +143,7 @@ instance HasKeyedClientEnv Env "auth" where
   getClientEnv _ = authClientEnv
 
 tg :: BotM a -> AppM a
-tg = AppM
-   . ReaderT . const
-   . ExceptT . fmap Right
+tg = AppM . lift . lift . lift
 
 type Eff' action = ReaderT Env (Eff action)
 
@@ -150,8 +154,8 @@ infix 0 <#
 (<#) :: GetAction a action => state -> AppM a -> Eff' action state
 state <# AppM app = do
   env <- ask
-  let bot = runExceptT (runReaderT app env) >>= \case
-        Right a -> return a
+  let bot = app `runReaderT` env `runStateT` Nothing & runExceptT >>= \case
+        Right (a, _) -> return a
         Left err -> error $ show err
   ReaderT $ const $ withEffect bot state
 
@@ -174,8 +178,15 @@ process = fmap
 
 authViaTelegram :: TG.User -> AppM Token
 authViaTelegram user = do
-  secret <- asks secret
-  runReq $ authTelegram secret user
+  afterFiveMinutes <- liftIO $ addUTCTime (secondsToNominalDiffTime 300) <$> getCurrentTime
+  get >>= \case
+    Just (token, expirationTime) | afterFiveMinutes < expirationTime ->
+      return token
+    _ -> do
+      secret <- asks secret
+      (token, expirationTime) <- runReq $ authTelegram secret user
+      put $ Just (token, expirationTime)
+      return token
 
 decideTransition :: BotName -> State -> Update -> Maybe Transition
 decideTransition (BotName botName) state = parseUpdate $
@@ -206,6 +217,7 @@ decideTransition (BotName botName) state = parseUpdate $
         return transition
         where
           isAllowed SelectRequestRecipient{} = True
+          isAllowed CancelSelectingRequestRecipient{} = True
           isAllowed _ = False
 
 handleTransition :: Transition -> State -> Eff' Transition State
@@ -213,13 +225,11 @@ handleTransition GetCurrentState state = state <# do tg $ replyText $ tshow stat
 handleTransition Id state = pure state
 handleTransition transition InitialState = case transition of
   Start -> InitialState <# do
-    currentUser >>= \case
-      Nothing -> return ()
-      Just user -> do
-        token <- authViaTelegram user
-        let UsersClient{ getMe }  = mkUsersClient apiClient token
-        UserResp{ username } <- runReq getMe
-        tg $ replyText $ "Nice to see you, " <> unTextLenRange username
+    user <- currentUser
+    token <- authViaTelegram user
+    let UsersClient{ getMe }  = mkUsersClient apiClient token
+    UserResp{ username } <- runReq getMe
+    tg $ replyText $ "Nice to see you, " <> unTextLenRange username
 
   ShowReceipt qr -> InitialState <# do
     let ApiClient{ getReceipt } = apiClient
@@ -241,13 +251,13 @@ handleTransition transition InitialState = case transition of
 
   StartSelectingReceiptItems qr items -> pure $ SelectingReceiptItems qr (map (False,) items)
 
-  AddContact content -> InitialState <# currentUser >>= \case
-    Nothing -> return ()
-    Just user -> authViaTelegram user >>= \token ->
-      case T.uncons content of
+  AddContact content -> InitialState <# do
+    user <- currentUser
+    token <- authViaTelegram user
+    case T.uncons content of
       Nothing -> do
         tg $ replyText "Please, enter non empty username to add to contacts"
-      Just ('@', content') -> case T.span (== ' ') content' of
+      Just ('@', content') -> case T.span (/= ' ') content' of
         (contactTgUsername, "") -> do
           u <- runReq $ getUser token (UserTgUsernameQuery contactTgUsername)
           if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
@@ -269,6 +279,7 @@ handleTransition transition InitialState = case transition of
           Nothing -> tg $ replyText $
             "contact name " <> mContactName <> " is too long, 50 symbols is the max length"
           Just contactName -> do
+            liftIO $ print $ unTextMaxLen contactName
             u <- runReq $ getUser token (UserTgUsernameQuery contactTgUsername)
             if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
                 let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
@@ -277,15 +288,15 @@ handleTransition transition InitialState = case transition of
                       , contactName = Just contactName
                       }
                 runReq_ (createContact reqBody)
-                tg $ replyText $ "contact @" <> contactTgUsername <> " successfully added as " <> mContactName
+                tg $ replyText $ "contact " <> contactTgUsername <> " successfully added as " <> mContactName
                | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
                 tg $ replyText $ T.unlines
-                  [ "User @" <> contactTgUsername <> " is not registered in check-check"
+                  [ "User " <> contactTgUsername <> " is not registered in check-check"
                   , "Send them the following link to join:"
                   ]
                 tg $ replyText "https://t.me/CheckCheckTgBot?start=start" -- TODO remove the hardlink
                | otherwise -> error "unreachable"
-      _ -> case T.span (== ' ') content of
+      _ -> case T.span (/= ' ') content of
         (contactUsername, "") -> do
           u <- runReq $ getUser token (UserUsernameQuery contactUsername)
           if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
@@ -297,10 +308,10 @@ handleTransition transition InitialState = case transition of
               runReq_ (createContact reqBody)
               tg $ replyText $
                   "contact " <> contactUsername <> " successfully added"
-              | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+             | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
               tg $ replyText $
                 "User " <> contactUsername <> " is not registered in check-check"
-              | otherwise -> error "unreachable"
+             | otherwise -> error "unreachable"
 
         (contactUsername, mContactName) -> case mkTextMaxLen mContactName of
           Nothing -> tg $ replyText $
@@ -350,23 +361,22 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
         let replyMsgText = T.unlines
               $ ("В сумме на: " <> tshow overallSum)
               : (view #name <$> toList filteredItems)
-        currentUser >>= \case
-          Nothing -> return ()
-          Just user -> do
-            token <- authViaTelegram user
-            let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
-            contactsResp <- runReq getContacts
-            let contacts = contactsResp <&>
-                  \ContactResp{..} -> UserContact{ mContactName = contactName, ..}
-            buttons <- forM contacts $ \UserContact{..} -> do
-              let name = maybe "aboba" unTextMaxLen mContactName
-              -- TODO pull usernames for contacts without contact name
-              return $ actionButton name (SelectRequestRecipient contactUserId)
-            let replyMsg = (toReplyMessage replyMsgText)
-                  { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-                    { inlineKeyboardMarkupInlineKeyboard = buttons <&> (:[]) }
-                  }
-            tg $ reply replyMsg
+        user <- currentUser
+        token <- authViaTelegram user
+        let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
+        contactsResp <- runReq getContacts
+        let contacts = contactsResp <&>
+              \ContactResp{..} -> UserContact{ mContactName = contactName, ..}
+        buttons <- forM contacts $ \UserContact{..} -> do
+          let name = maybe "aboba" unTextMaxLen  mContactName
+          -- TODO pull usernames for contacts without contact name
+          return $ actionButton name (SelectRequestRecipient contactUserId)
+        let buttons' = buttons ++ [actionButton "Cancel" CancelSelectingRequestRecipient]
+        let replyMsg = (toReplyMessage replyMsgText)
+              { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
+                { inlineKeyboardMarkupInlineKeyboard = (:[]) <$> buttons' }
+              }
+        tg $ reply replyMsg
 
       Nothing -> SelectingReceiptItems qr items <# do
         tg $ replyText "this text has to be edited, btw you did not select anything"
@@ -374,18 +384,18 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
 
 handleTransition transition (SelectingRequestRecipient qr indices) = case transition of
   SelectRequestRecipient recipientId -> InitialState <# do
-    currentUser >>= \case
-      Nothing -> return ()
-      Just user -> do
-        token <- authViaTelegram user
-        let OutgointRequestsClient{ sendRequest } = outgoingRequestsClient $ mkUsersClient apiClient token
-        let reqBody = SendReceiptItemsRequestReqBody
-              { receiptQr = qr
-              , indexSelections = singleton $ IndexSelectionReqBody{..}
-              }
-        runReq_ $ sendRequest reqBody
-        tg $ replyText $ T.pack $ toString recipientId
-        return ()
+    user <- currentUser
+    token <- authViaTelegram user
+    let OutgointRequestsClient{ sendRequest } = outgoingRequestsClient $ mkUsersClient apiClient token
+    let reqBody = SendReceiptItemsRequestReqBody
+          { receiptQr = qr
+          , indexSelections = singleton $ IndexSelectionReqBody{..}
+          }
+    runReq_ $ sendRequest reqBody
+    tg $ replyText $ T.pack $ toString recipientId
+
+  CancelSelectingRequestRecipient -> pure InitialState
+
   _ -> undefined
 
 run :: String -> TG.Token -> IO ()

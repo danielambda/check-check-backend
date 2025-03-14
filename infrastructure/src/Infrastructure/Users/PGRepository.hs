@@ -37,6 +37,7 @@ import Control.Monad.IO.Class (MonadIO)
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
+import SmartPrimitives.TextMaxLen (TextMaxLen)
 import Core.Common.Operators ((^^?), (^^.))
 import Core.Common.Domain.RubKopecks (RubKopecks(RubKopecks))
 import Core.Users.Budget.Domain.Budget (Budget(..))
@@ -50,7 +51,6 @@ import Infrastructure.Common.Persistence
   ( MonadPG, execute, executeMany, withTransaction
   , query, queryMaybe, querySingleField, execute_
   )
-import SmartPrimitives.TextMaxLen (TextMaxLen)
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }

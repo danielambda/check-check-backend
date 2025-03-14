@@ -10,9 +10,9 @@ module Core.Users.Domain.UserContact (UserContact(..)) where
 
 import Optics (makeFieldLabelsNoPrefix)
 
-import SmartPrimitives.TextMaxLen (TextMaxLen)
 import Core.Users.Domain.UserId (UserId)
 import Core.Users.Domain.UserType (UserType(Single))
+import SmartPrimitives.TextMaxLen (TextMaxLen)
 
 data UserContact = UserContact
   { contactUserId :: UserId 'Single
