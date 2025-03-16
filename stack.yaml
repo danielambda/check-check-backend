@@ -5,7 +5,7 @@ nix:
     - zlib.out
     - postgresql_17
 
-snapshot: nightly-2024-12-04
+snapshot: lts-23.14
 
 packages:
 - contracts

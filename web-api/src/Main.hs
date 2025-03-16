@@ -5,7 +5,7 @@ module Main (main) where
 
 import Configuration.Dotenv (loadFile, defaultConfig)
 import Network.Wai.Handler.Warp
-  (defaultSettings, setPort, setBeforeMainLoop, runSettings)
+  (defaultSettings, setPort, setBeforeMainLoop, runSettings, setHost)
 import Network.Wai.Middleware.Cors
   (cors, simpleCorsResourcePolicy, corsMethods, corsOrigins, corsRequestHeaders)
 import Data.ByteString.Char8 as BS8 (pack)
@@ -46,6 +46,7 @@ runAPI pgConnPool redisConnPool = do
   where
     port = 8080
     settings = defaultSettings
+      & setHost "0.0.0.0"
       & setPort port
       & setBeforeMainLoop (hPutStrLn stderr $ "listening on port "<>show port)
 

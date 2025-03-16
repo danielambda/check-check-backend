@@ -194,10 +194,15 @@ instance ToField DbRequestItemIdentityTag where
 
 createRequestItemsTable :: MonadPG m => m ()
 createRequestItemsTable = void $ execute_ [sql|
-  CREATE TYPE requestItemIdentityTag AS ENUM
-  ( 'TextRequestItemIdentity'
-  , 'ReceiptItemNameTextRequestItemIdentity'
-  );
+  DO $$
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'requestitemidentitytag') THEN
+      CREATE TYPE requestItemIdentityTag AS ENUM
+      ( 'TextRequestItemIdentity'
+      , 'ReceiptItemNameTextRequestItemIdentity'
+      );
+    END IF;
+  END $$;
 
   CREATE TABLE IF NOT EXISTS requestItems
   ( requestId UUID NOT NULL REFERENCES requests(requestId)

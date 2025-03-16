@@ -5,7 +5,6 @@ import Data.ByteString.Char8 as B (pack)
 import Database.PostgreSQL.Simple (connectPostgreSQL)
 import Control.Monad.Reader (ReaderT (runReaderT))
 
-import Control.Monad.IO.Class (MonadIO)
 import System.Environment (getEnv)
 
 import Infrastructure.Common.Persistence (MonadPG, withTransaction)
@@ -20,7 +19,7 @@ main = do
     >>= connectPostgreSQL . B.pack
     >>= runReaderT initDb
 
-initDb :: (MonadIO m, MonadPG m) => m ()
+initDb :: MonadPG m => m ()
 initDb = withTransaction $ do
   createReceiptItemsTable
   createUsersTable

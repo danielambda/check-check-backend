@@ -25,7 +25,7 @@ import Telegram.Bot.Simple
   , actionButton, conversationBot, replyText
   , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect, BotContext (botContextUpdate), toReplyMessage
   )
-import AuthServiceClient ( authTelegram, UserQuery(..), getUser, AuthServiceUser(..) )
+import AuthServiceClient (authTelegram, UserQuery(..), getUser, AuthServiceUser(..))
 import BackendClient (ApiClient(..), apiClient, UsersClient(..), OutgointRequestsClient(..), ContactsClient(..))
 import CheckCheck.Contracts.Receipts (ReceiptResp (..), ReceiptItemResp (..))
 import CheckCheck.Contracts.Users.Contacts (ContactResp(..), CreateContactReqBody (..))
@@ -34,7 +34,7 @@ import CheckCheck.Contracts.Users (UserResp(..))
 import ClientMUtils (runReq, runReq_, HasKeyedClientEnv(..), FromClientError(..), FromClientError)
 import Configuration.Dotenv (loadFile, defaultConfig)
 import Control.Applicative ((<|>))
-import Control.Monad.Error.Class (MonadError)
+import Control.Monad.Error.Class (MonadError, throwError)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask), asks, MonadTrans (lift))
@@ -42,7 +42,6 @@ import Control.Monad.State (StateT(runStateT), MonadState (get, put))
 import Control.Monad (unless, forM, (>=>))
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
-import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time (getCurrentTime, UTCTime, addUTCTime, secondsToNominalDiffTime)
 import Data.UUID (UUID, toString)
@@ -64,7 +63,8 @@ currentUser :: AppM TG.User
 currentUser = AppM $ lift $ do
   userFromMessage <- asks $ botContextUpdate >=> updateMessage >=> messageFrom
   userFromCallback <- asks $ botContextUpdate >=> updateCallbackQuery .> fmap callbackQueryFrom
-  return $ fromJust $ userFromMessage <|> userFromCallback
+  maybe (throwError (AppClientError undefined)) return $ userFromMessage <|> userFromCallback
+  -- TODO add proper error to throw
   where (.>) = flip (.)
 
 data ReceiptItem = ReceiptItem
@@ -157,7 +157,7 @@ state <# AppM app = do
   let bot = app `runReaderT` env `runStateT` Nothing & runExceptT >>= \case
         Right (a, _) -> return a
         Left err -> error $ show err
-  ReaderT $ const $ withEffect bot state
+  lift $ withEffect bot state
 
 divide :: Int -> Double -> Double
 divide a b = fromIntegral a / b
@@ -261,20 +261,21 @@ handleTransition transition InitialState = case transition of
         (contactTgUsername, "") -> do
           u <- runReq $ getUser token (UserTgUsernameQuery contactTgUsername)
           if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
-              let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
-              let reqBody = CreateContactReqBody
-                    { contactUserId = userId
-                    , contactName = Nothing
-                    }
-              runReq_ $ createContact reqBody
-              tg $ replyText $ "contact @" <> contactTgUsername <> " successfully added"
-             | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
-              tg $ replyText $ T.unlines
-                [ "User @" <> contactTgUsername <> " is not registered in check-check"
-                , "Send them the following link to join:"
-                ]
-              tg $ replyText "https://t.me/CheckCheckTgBot?start=start" -- TODO remove the hardlink
-              | otherwise -> error "unreachable"
+                let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
+                let reqBody = CreateContactReqBody
+                      { contactUserId = userId
+                      , contactName = Nothing
+                      }
+                runReq_ $ createContact reqBody
+                tg $ replyText $ "contact @" <> contactTgUsername <> " successfully added"
+             | Just _ <- matchUnion @(WithStatus 404 ()) u -> do
+                tg $ replyText $ T.unlines
+                  [ "User @" <> contactTgUsername <> " is not registered in check-check"
+                  , "Send them the following link to join:"
+                  ]
+                tg $ replyText "https://t.me/CheckCheckTgBot?start=start" -- TODO remove the hardlink
+              | otherwise ->
+                error "unreachable"
         (contactTgUsername, mContactName) -> case mkTextMaxLen mContactName of
           Nothing -> tg $ replyText $
             "contact name " <> mContactName <> " is too long, 50 symbols is the max length"
@@ -289,7 +290,7 @@ handleTransition transition InitialState = case transition of
                       }
                 runReq_ (createContact reqBody)
                 tg $ replyText $ "contact " <> contactTgUsername <> " successfully added as " <> mContactName
-               | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+               | Just _ <- matchUnion @(WithStatus 404 ()) u -> do
                 tg $ replyText $ T.unlines
                   [ "User " <> contactTgUsername <> " is not registered in check-check"
                   , "Send them the following link to join:"
@@ -308,7 +309,7 @@ handleTransition transition InitialState = case transition of
               runReq_ (createContact reqBody)
               tg $ replyText $
                   "contact " <> contactUsername <> " successfully added"
-             | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+             | Just _ <- matchUnion @(WithStatus 404 ()) u -> do
               tg $ replyText $
                 "User " <> contactUsername <> " is not registered in check-check"
              | otherwise -> error "unreachable"
@@ -327,7 +328,7 @@ handleTransition transition InitialState = case transition of
                 runReq_ (createContact reqBody)
                 tg $ replyText $
                     "contact " <> contactUsername <> " successfully added as " <> mContactName
-               | Just _ <- matchUnion @(WithStatus 404 Text) u -> do
+               | Just _ <- matchUnion @(WithStatus 404 ()) u -> do
                 tg $ replyText $
                   "User " <> contactUsername <> " is not registered in check-check"
                | otherwise -> error "unreachable"

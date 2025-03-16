@@ -1,5 +1,5 @@
 ### Get all incoming requests
-GET localhost:8080/users/b220e714-d740-402d-b801-cf904fc3834b/incoming-requests
+GET localhost:8080/incoming-requests
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXQiOnsidXNlcklkIjoiZGQ4YjBjZjctMGM3NC00MjQ2LWI1YzQtYjlkZmQ4N2QxMGNmIiwidXNlcm5hbWUiOiJkYW5pZWxhbWJkYSJ9LCJuYmYiOjE3NDE5ODk3ODAsImV4cCI6MTc0MTk5MzM4MCwiaWF0IjoxNzQxOTg5NzgwfQ.EwiU1uHxW5O82Ik1pqgSbcA7hXhUaZOYMZSLm7VrXEk
 
 ### Mark request as completed

@@ -39,7 +39,7 @@ type AuthTelegram = "auth" :> "telegram" :>
   ReqBody '[JSON] TgAuthData :> Header "x-api-key" String :> Post '[JSON] TgAuthResult
 
 type GetUser = "users" :> Auth '[JWT] AuthenticatedUser
-  :> Capture "query" UserQuery :> UVerb 'GET '[JSON] '[AuthServiceUser, WithStatus 404 Text]
+  :> Capture "query" UserQuery :> UVerb 'GET '[JSON] '[AuthServiceUser, WithStatus 404 ()]
 
 data TgAuthData = TgAuthData
   { userId :: Integer
@@ -77,7 +77,7 @@ data AuthServiceUser = AuthServiceUser
   } deriving (Generic, FromJSON)
 instance HasStatus AuthServiceUser where type StatusOf AuthServiceUser = 200
 
-getUser :: Token -> UserQuery -> AuthServiceClientM (Union '[AuthServiceUser, WithStatus 404 Text])
+getUser :: Token -> UserQuery -> AuthServiceClientM (Union '[AuthServiceUser, WithStatus 404 ()])
 getUser = hoistClient endpoint nt $ client endpoint
   where
     endpoint = Proxy :: Proxy GetUser
