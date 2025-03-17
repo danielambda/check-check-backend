@@ -19,7 +19,6 @@ executable:
   - wai
   - wai-cors
   - warp
-  - dotenv
   - bytestring
   - base64-bytestring
   - postgresql-simple

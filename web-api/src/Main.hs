@@ -3,7 +3,6 @@
 
 module Main (main) where
 
-import Configuration.Dotenv (loadFile, defaultConfig)
 import Network.Wai.Handler.Warp
   (defaultSettings, setPort, setBeforeMainLoop, runSettings, setHost)
 import Network.Wai.Middleware.Cors
@@ -24,8 +23,6 @@ import qualified Database.Redis as Redis
 
 main :: IO ()
 main = do
-  loadFile defaultConfig
-
   pgConn <- PG.connectPostgreSQL . BS8.pack <$> getEnv "POSTGRESQL_CONNECTION_STRING"
   pgConnPool <- newPool $ defaultPoolConfig pgConn PG.close
                             20 -- Keepalive time (seconds)

@@ -19,7 +19,6 @@ executable:
   - servant-auth
   - servant-auth-client
   - aeson
-  - dotenv
   - bytestring
   - mtl
   - uuid

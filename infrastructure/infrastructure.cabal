@@ -48,7 +48,6 @@ executable init-db
   build-depends:
       base
     , bytestring
-    , dotenv
     , infrastructure
     , mtl
     , postgresql-simple

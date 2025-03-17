@@ -16,7 +16,7 @@
 module Core.Users.Domain.User
   ( User(..), SomeUser(..)
   , UserData(..)
-  , newUserSingle, newUserGroup
+  , newUserGroup
   ) where
 
 import Optics
@@ -48,11 +48,6 @@ data User (t :: UserType) where
     , otherUserIds :: [UserId 'Single]
     , userGroupData :: UserData
     } -> User 'Group
-
-newUserSingle :: MonadUUID m => UserData -> m (User 'Single)
-newUserSingle userData = do
-  userId <- newUserId
-  return $ UserSingle userId userData
 
 newUserGroup :: MonadUUID m => UserId 'Single -> [UserId 'Single] -> UserData -> m (User 'Group)
 newUserGroup ownerId otherUserIds userData = do

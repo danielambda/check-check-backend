@@ -47,21 +47,28 @@
           name = "check-check-backend";
           tag = "latest";
 
-          contents = [infrastructure web-api pkgs.cacert];
+          contents = [web-api pkgs.cacert];
 
-          config.Cmd = [
-            "${pkgs.runtimeShell}" "-c"
-            "${infrastructure}/bin/init-db && ${web-api}/bin/web-api"
-          ];
+          config.Expose = [8080];
+          config.Entrypoint = ["${web-api}/bin/web-api"];
+        };
+
+        init-db-image = pkgs.dockerTools.buildLayeredImage {
+          name = "check-check-backend-init-db";
+          tag = "latest";
+
+          contents = [infrastructure];
+
+          config.Entrypoint = ["${infrastructure}/bin/init-db"];
         };
 
         telegram-bot-image = pkgs.dockerTools.buildLayeredImage {
           name = "check-check-telegram-bot";
           tag = "latest";
 
-          contents = [telegram-bot];
+          contents = [telegram-bot pkgs.cacert];
 
-          config.Cmd = ["${telegram-bot}/bin/telegram-bot"];
+          config.Entrypoint = ["${telegram-bot}/bin/telegram-bot"];
         };
       in {
         devShell = pkgs.mkShell {
@@ -70,11 +77,9 @@
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;
         };
 
-        packages.telegram-bot = telegram-bot;
-        packages.telegram-bot-image = telegram-bot-image;
-
-        packages.web-api = web-api;
         packages.web-api-image = web-api-image;
+        packages.init-db-image = init-db-image;
+        packages.telegram-bot-image = telegram-bot-image;
       }
     );
 }

@@ -8,9 +8,10 @@ import Core.Users.Domain.User (User, SomeUser (SomeUser))
 import Core.Users.Domain.UserId (UserId, SomeUserId)
 import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Domain.UserContact (UserContact)
+import Data.Text (Text)
 
 class Monad m => UsersRepository m where
-  addUserToRepo :: User t -> m ()
+  addUserToRepo :: User t -> m (Either Text ())
   getUserFromRepo :: Typeable t => UserId t -> m (Maybe (User t))
   getSomeUserFromRepo :: SomeUserId -> m (Maybe SomeUser)
   userExistsInRepo :: SomeUserId -> m Bool

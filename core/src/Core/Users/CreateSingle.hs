@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Core.Users.CreateSingle
   ( Data(..)
@@ -11,21 +12,25 @@ module Core.Users.CreateSingle
 
 import SmartPrimitives.TextLenRange (TextLenRange)
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
-import Core.Common.Operators ((*>>))
 import Core.Users.MonadClasses.Repository (UsersRepository(addUserToRepo))
 import Core.Users.Domain.UserType (UserType(Single))
-import Core.Users.Domain.User (User, newUserSingle, UserData(..))
+import Core.Users.Domain.User (User (UserSingle), UserData(..))
 import Core.Users.Domain.Primitives (Username(..))
+import Core.Users.Domain.UserId (UserId)
+import Data.Text (Text)
 
-newtype Data = Data
-  { username :: TextLenRange 2 50 }
+data Data = Data
+  { userId :: UserId 'Single
+  , username :: TextLenRange 2 50
+  }
 
 type Dependencies m = (MonadUUID m, UsersRepository m)
-createSingle :: Dependencies m => Data -> m (User 'Single)
-createSingle Data{ username } =
-  let userData = UserData
+createSingle :: Dependencies m => Data -> m (Either Text (User 'Single))
+createSingle Data{ userId, username } = do
+  let user = UserSingle userId UserData
         { username = Username username
         , mBudget = Nothing
         }
-  in newUserSingle userData >>=
-    (addUserToRepo *>> return)
+  addUserToRepo user >>= \case
+    Left err -> return $ Left err
+    Right _ -> return $ Right user

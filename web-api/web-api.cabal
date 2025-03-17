@@ -37,13 +37,13 @@ executable web-api
       WebAPI.Users.Contacts.Create
       WebAPI.Users.Contacts.Delete
       WebAPI.Users.Contacts.GetAll
+      WebAPI.Users.Create
       WebAPI.Users.Get
       WebAPI.Users.IncomingRequests
       WebAPI.Users.IncomingRequests.Complete
       WebAPI.Users.IncomingRequests.GetAll
       WebAPI.Users.OutgoingRequests
       WebAPI.Users.OutgoingRequests.Send
-      WebAPI.Users.Register
       Paths_web_api
   hs-source-dirs:
       src
@@ -55,7 +55,6 @@ executable web-api
     , bytestring
     , contracts
     , core
-    , dotenv
     , hedis
     , http-conduit
     , infrastructure

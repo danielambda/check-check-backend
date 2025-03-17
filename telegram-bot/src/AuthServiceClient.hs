@@ -42,8 +42,8 @@ type GetUser = "users" :> Auth '[JWT] AuthenticatedUser
   :> Capture "query" UserQuery :> UVerb 'GET '[JSON] '[AuthServiceUser, WithStatus 404 ()]
 
 data TgAuthData = TgAuthData
-  { userId :: Integer
-  , username :: Text
+  { tgUserId :: Integer
+  , tgUsername :: Text
   } deriving (Generic, ToJSON)
 
 data TgAuthResult = TgAuthResult
@@ -84,7 +84,7 @@ getUser = hoistClient endpoint nt $ client endpoint
     nt = AuthServiceClientM
 
 authTelegram :: String -> User -> AuthServiceClientM (Token, UTCTime)
-authTelegram apiKey User{ userId = UserId userId, userUsername = Just username } = do
+authTelegram apiKey User{ userId = UserId tgUserId, userUsername = Just tgUsername } = do
   let authData = TgAuthData{..}
   authResultToToken <$> authTelegram' authData apiKey
   where

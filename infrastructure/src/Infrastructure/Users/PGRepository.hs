@@ -13,6 +13,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiWayIf #-}
 
 {-# OPTIONS_GHC -Wno-x-patrial #-}
 
@@ -24,7 +26,7 @@ module Infrastructure.Users.PGRepository
   , createUserContactsTable
   ) where
 
-import Database.PostgreSQL.Simple (ToRow, Only (..), FromRow)
+import Database.PostgreSQL.Simple (ToRow, Only (..), FromRow, SqlError (sqlState, sqlErrorMsg, SqlError))
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Data.UUID (UUID)
 import Optics ((^.), (%), (^?), (^..))
@@ -33,7 +35,7 @@ import qualified Data.HashMap.Strict as HashMap (elems, fromListWith)
 import Data.Maybe (fromJust)
 import Data.Typeable (type (:~:)(Refl), Typeable, eqT)
 import Control.Monad (void, forM_, forM)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextLenRange (TextLenRange)
@@ -48,9 +50,14 @@ import Core.Users.Domain.UserType (UserType(..))
 import Core.Users.Domain.UserContact (UserContact (..))
 import Core.Users.MonadClasses.Repository (UsersRepository(..))
 import Infrastructure.Common.Persistence
-  ( MonadPG, execute, executeMany, withTransaction
+  ( MonadPG (askConn), execute, executeMany, withTransaction
   , query, queryMaybe, querySingleField, execute_
   )
+import Data.Text (Text)
+import Control.Exception (try)
+import Data.ByteString.Char8 (isInfixOf)
+import qualified Data.Text as T (pack)
+import Control.Monad.Reader (ReaderT(runReaderT))
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }
@@ -75,10 +82,11 @@ instance MonadPG m => UsersRepository (UsersRepositoryT m) where
       Just Refl -> getUserGroupFromDb
       Nothing -> error "unreachable"
 
-addUserToDb :: MonadPG m => User t -> m ()
+addUserToDb :: MonadPG m => User t -> m (Either Text ())
 addUserToDb user = do
   let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
-  withTransaction $ do
+  conn <- askConn
+  result <- liftIO $ try $ flip runReaderT conn $ withTransaction $ do
     void $ execute [sql|
       INSERT INTO users (userId, username, ownerId, isGroup) VALUES (?, ?, ?, ?)
     |] dbUser
@@ -88,6 +96,16 @@ addUserToDb user = do
     forM_ mDbBudget $ execute [sql|
       INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
     |]
+  case result of
+    Right _ -> return $ Right ()
+    Left (err :: SqlError) -> handleSqlError err
+      where
+        handleSqlError SqlError{ sqlState, sqlErrorMsg }
+          | sqlState == "23505" = return $ Left $ -- Unique violation error code
+              if | "users_pkey" `isInfixOf` sqlErrorMsg -> "userId already exists"
+                 | "users_username_key" `isInfixOf` sqlErrorMsg -> "username already exists"
+                 | otherwise -> T.pack $ show err
+          | otherwise = return $ Left $ T.pack $ show err
 
 getSomeUserFromDb :: MonadPG m => SomeUserId -> m (Maybe SomeUser)
 getSomeUserFromDb (SomeUserId userId) = withTransaction $ do

@@ -2,4 +2,5 @@
 dist-newstyle/
 .env
 .direnv/
+result
 *~

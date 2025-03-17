@@ -12,6 +12,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Main (main) where
 
@@ -23,7 +24,7 @@ import Telegram.Bot.API
 import Telegram.Bot.Simple
   ( BotApp(..), Eff, startBot_, getEnvToken, ReplyMessage (replyMessageReplyMarkup), reply
   , actionButton, conversationBot, replyText
-  , editUpdateMessage, EditMessage (..), BotM, GetAction, withEffect, BotContext (botContextUpdate), toReplyMessage
+  , editUpdateMessage, EditMessage (..), BotM, withEffect, BotContext (botContextUpdate), toReplyMessage, GetAction
   )
 import AuthServiceClient (authTelegram, UserQuery(..), getUser, AuthServiceUser(..))
 import BackendClient (ApiClient(..), apiClient, UsersClient(..), OutgointRequestsClient(..), ContactsClient(..))
@@ -32,7 +33,6 @@ import CheckCheck.Contracts.Users.Contacts (ContactResp(..), CreateContactReqBod
 import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody(..), IndexSelectionReqBody (..))
 import CheckCheck.Contracts.Users (UserResp(..))
 import ClientMUtils (runReq, runReq_, HasKeyedClientEnv(..), FromClientError(..), FromClientError)
-import Configuration.Dotenv (loadFile, defaultConfig)
 import Control.Applicative ((<|>))
 import Control.Monad.Error.Class (MonadError, throwError)
 import Control.Monad.Except (ExceptT, runExceptT)
@@ -51,12 +51,13 @@ import qualified Data.Text as T
 import qualified Telegram.Bot.API as TG
 import Servant.API (WithStatus)
 import Servant.Auth.Client (Token)
-import Servant.Client (runClientM, mkClientEnv, Scheme (Http), BaseUrl (BaseUrl), ClientError, ClientEnv, matchUnion)
+import Servant.Client (runClientM, mkClientEnv, BaseUrl, ClientError, ClientEnv, matchUnion, parseBaseUrl)
 import SmartPrimitives.Positive (pattern Positive)
 import SmartPrimitives.TextLenRange (unTextLenRange)
 import SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen)
 import System.Environment (getEnv)
 import Telegram.Bot.Simple.UpdateParser (parseUpdate, command, commandWithBotName, callbackQueryDataRead)
+import Orphan ()
 
 -- TODO remove this function and replace it with users parsed alongside with transitions
 currentUser :: AppM TG.User
@@ -151,12 +152,12 @@ tshow :: Show a => a -> Text
 tshow = T.pack . show
 
 infix 0 <#
-(<#) :: GetAction a action => state -> AppM a -> Eff' action state
+(<#) :: GetAction a Transition => state -> AppM a -> Eff' Transition state
 state <# AppM app = do
   env <- ask
   let bot = app `runReaderT` env `runStateT` Nothing & runExceptT >>= \case
-        Right (a, _) -> return a
-        Left err -> error $ show err
+        Right (a, _) -> return $ Right a
+        Left err -> liftIO (print err) >> return (Left ())
   lift $ withEffect bot state
 
 divide :: Int -> Double -> Double
@@ -280,7 +281,6 @@ handleTransition transition InitialState = case transition of
           Nothing -> tg $ replyText $
             "contact name " <> mContactName <> " is too long, 50 symbols is the max length"
           Just contactName -> do
-            liftIO $ print $ unTextMaxLen contactName
             u <- runReq $ getUser token (UserTgUsernameQuery contactTgUsername)
             if | Just AuthServiceUser{ userId } <- matchUnion @AuthServiceUser u -> do
                 let ContactsClient{ createContact } = contactsClient $ mkUsersClient apiClient token
@@ -353,34 +353,33 @@ handleTransition transition (SelectingReceiptItems qr items) = case transition o
             }
       tg $ editUpdateMessage editMessage'
 
-  StartSelectingRequestRecipient ->
-    case nonEmpty $ items & filter fst & map snd of
-      Just filteredItems -> SelectingRequestRecipient qr (view #index <$> filteredItems) <# do
-        let overallSum = (`divide` 100) $ sum $ filteredItems <&>
-              \ReceiptItem{ quantity, price } ->
-                round (fromIntegral price * quantity)
-        let replyMsgText = T.unlines
-              $ ("В сумме на: " <> tshow overallSum)
-              : (view #name <$> toList filteredItems)
-        user <- currentUser
-        token <- authViaTelegram user
-        let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
-        contactsResp <- runReq getContacts
-        let contacts = contactsResp <&>
-              \ContactResp{..} -> UserContact{ mContactName = contactName, ..}
-        buttons <- forM contacts $ \UserContact{..} -> do
-          let name = maybe "aboba" unTextMaxLen  mContactName
-          -- TODO pull usernames for contacts without contact name
-          return $ actionButton name (SelectRequestRecipient contactUserId)
-        let buttons' = buttons ++ [actionButton "Cancel" CancelSelectingRequestRecipient]
-        let replyMsg = (toReplyMessage replyMsgText)
-              { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-                { inlineKeyboardMarkupInlineKeyboard = (:[]) <$> buttons' }
-              }
-        tg $ reply replyMsg
+  StartSelectingRequestRecipient -> case nonEmpty $ items & filter fst & map snd of
+    Nothing -> SelectingReceiptItems qr items <# do
+      tg $ replyText "this text has to be edited, btw you did not select anything"
 
-      Nothing -> SelectingReceiptItems qr items <# do
-        tg $ replyText "this text has to be edited, btw you did not select anything"
+    Just filteredItems -> SelectingRequestRecipient qr (view #index <$> filteredItems) <# do
+      let overallSum = (`divide` 100) $ sum $ filteredItems <&>
+            \ReceiptItem{ quantity, price } ->
+              round (fromIntegral price * quantity)
+      let replyMsgText = T.unlines
+            $ ("В сумме на: " <> tshow overallSum)
+            : (view #name <$> toList filteredItems)
+      user <- currentUser
+      token <- authViaTelegram user
+      let ContactsClient{ getContacts } = contactsClient $ mkUsersClient apiClient token
+      contactsResp <- runReq getContacts
+      let contacts = contactsResp <&>
+            \ContactResp{..} -> UserContact{ mContactName = contactName, ..}
+      buttons <- forM contacts $ \UserContact{..} -> do
+        let name = maybe "aboba" unTextMaxLen  mContactName
+        -- TODO pull usernames for contacts without contact name
+        return $ actionButton name (SelectRequestRecipient contactUserId)
+      let buttons' = buttons ++ [actionButton "Cancel" CancelSelectingRequestRecipient]
+      let replyMsg = (toReplyMessage replyMsgText)
+            { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
+              { inlineKeyboardMarkupInlineKeyboard = (:[]) <$> buttons' }
+            }
+      tg $ reply replyMsg
   _ -> undefined
 
 handleTransition transition (SelectingRequestRecipient qr indices) = case transition of
@@ -399,25 +398,32 @@ handleTransition transition (SelectingRequestRecipient qr indices) = case transi
 
   _ -> undefined
 
-run :: String -> TG.Token -> IO ()
-run authApiKey token = do
-  tgEnv <- defaultTelegramClientEnv token
+data RunConfig = RunConfig
+  { authApiKey :: String
+  , tgToken :: TG.Token
+  , beClientBaseUrl :: BaseUrl
+  , authClientBaseUrl :: BaseUrl
+  }
+
+run :: RunConfig -> IO ()
+run RunConfig{..} = do
+  tgEnv <- defaultTelegramClientEnv tgToken
   mBotName <- either (error . show) (userUsername . responseResult) <$> runClientM TG.getMe tgEnv
   let botName = maybe (error "bot name is not defined") BotName mBotName
 
   manager <- newManager defaultManagerSettings
-  let clientEnv = mkClientEnv manager (BaseUrl Http "localhost" 8080 "")
-  let authClientEnv = mkClientEnv manager (BaseUrl Http "localhost" 5183 "")
+  let beClientEnv = mkClientEnv manager beClientBaseUrl
+  let authClientEnv = mkClientEnv manager authClientBaseUrl
 
-  let botApp = conversationBot updateChatId $ mkBotApp clientEnv authClientEnv authApiKey botName
+  let botApp = conversationBot updateChatId $ mkBotApp beClientEnv authClientEnv authApiKey botName
   startBot_ botApp tgEnv
 
 main :: IO ()
 main = do
-  loadFile defaultConfig
-
   putStrLn "The bot is running"
   authApiKey <- getEnv "AUTH_API_KEY"
-  token <- getEnvToken "TELEGRAM_BOT_TOKEN"
-  run authApiKey token
+  tgToken <- getEnvToken "TELEGRAM_BOT_TOKEN"
+  beClientBaseUrl <- parseBaseUrl =<< getEnv "BACKEND_BASE_URL"
+  authClientBaseUrl <- parseBaseUrl =<< getEnv "AUTH_BASE_URL"
+  run RunConfig{..}
 

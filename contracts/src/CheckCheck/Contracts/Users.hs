@@ -6,7 +6,7 @@
 
 module CheckCheck.Contracts.Users
   ( UsersAPI
-  , GetMe
+  , GetMe, CreateMe
   , UserResp(..)
   , AuthenticatedUser(..)
   , Authenticated
@@ -14,7 +14,7 @@ module CheckCheck.Contracts.Users
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.UUID (UUID)
-import Servant.API ((:>), (:<|>), Get, JSON)
+import Servant.API ((:>), (:<|>), Get, JSON, UVerb, StdMethod (POST), WithStatus)
 import Servant.Auth (Auth, JWT)
 import Servant.Auth.JWT (FromJWT, ToJWT)
 
@@ -25,6 +25,7 @@ import CheckCheck.Contracts.Users.Budget (BudgetAPI, BudgetResp)
 import CheckCheck.Contracts.Users.OutgoingRequests (OutgoingRequestsAPI)
 import CheckCheck.Contracts.Users.IncomingRequests (IncomingRequestsAPI)
 import CheckCheck.Contracts.Users.Contacts (ContactsAPI)
+import Data.Text (Text)
 
 type Authenticated = Auth '[JWT] AuthenticatedUser
 
@@ -34,7 +35,7 @@ data AuthenticatedUser = AUser
   } deriving (Generic, FromJSON, ToJSON, FromJWT, ToJWT)
 
 type UsersAPI = Authenticated
-  :> ( "me" :> GetMe
+  :> ( "me" :> (GetMe :<|> CreateMe)
   :<|> "contacts" :> ContactsAPI
   :<|> "outgoing-requests" :> OutgoingRequestsAPI
   :<|> "incoming-requests" :> IncomingRequestsAPI
@@ -43,6 +44,9 @@ type UsersAPI = Authenticated
 
 type GetMe =
   Get '[JSON] UserResp
+
+type CreateMe =
+  UVerb 'POST '[JSON] '[WithStatus 201 UserResp, WithStatus 400 Text]
 
 data UserResp = UserResp
   { userId :: UUID
