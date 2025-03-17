@@ -15,6 +15,7 @@ executable telegram-bot
       BackendClient
       ClientMUtils
       Orphan
+      Telegram.Bot.AppM
       Paths_telegram_bot
   hs-source-dirs:
       src

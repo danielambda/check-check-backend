@@ -2,7 +2,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DataKinds #-}
@@ -24,7 +23,7 @@ import Telegram.Bot.API
 import Telegram.Bot.Simple
   ( BotApp(..), Eff, startBot_, getEnvToken, ReplyMessage (replyMessageReplyMarkup), reply
   , actionButton, conversationBot, replyText
-  , editUpdateMessage, EditMessage (..), BotM, withEffect, BotContext (botContextUpdate), toReplyMessage, GetAction
+  , editUpdateMessage, EditMessage (..), withEffect, BotContext (botContextUpdate), toReplyMessage, GetAction
   )
 import AuthServiceClient (authTelegram, UserQuery(..), getUser, AuthServiceUser(..))
 import BackendClient (ApiClient(..), apiClient, UsersClient(..), OutgointRequestsClient(..), ContactsClient(..))
@@ -32,32 +31,33 @@ import CheckCheck.Contracts.Receipts (ReceiptResp (..), ReceiptItemResp (..))
 import CheckCheck.Contracts.Users.Contacts (ContactResp(..), CreateContactReqBody (..))
 import CheckCheck.Contracts.Users.OutgoingRequests (SendRequestReqBody(..), IndexSelectionReqBody (..))
 import CheckCheck.Contracts.Users (UserResp(..))
-import ClientMUtils (runReq, runReq_, HasKeyedClientEnv(..), FromClientError(..), FromClientError)
+import ClientMUtils (runReq, runReq_)
 import Control.Applicative ((<|>))
-import Control.Monad.Error.Class (MonadError, throwError)
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (ask), asks, MonadTrans (lift))
+import Control.Monad.Reader (MonadReader (ask), asks, MonadTrans (lift), ReaderT (..))
 import Control.Monad.State (StateT(runStateT), MonadState (get, put))
 import Control.Monad (unless, forM, (>=>))
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
 import Data.Text (Text)
-import Data.Time (getCurrentTime, UTCTime, addUTCTime, secondsToNominalDiffTime)
+import Data.Time (getCurrentTime, addUTCTime, secondsToNominalDiffTime)
 import Data.UUID (UUID, toString)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Optics (LabelOptic (labelOptic), A_Getter, to, unsafeFiltered, (%), (&), traversed, _1, _2, (.~), (^.), view)
+import Orphan ()
 import qualified Data.Text as T
 import qualified Telegram.Bot.API as TG
 import Servant.API (WithStatus)
 import Servant.Auth.Client (Token)
-import Servant.Client (runClientM, mkClientEnv, BaseUrl, ClientError, ClientEnv, matchUnion, parseBaseUrl)
+import Servant.Client (runClientM, mkClientEnv, BaseUrl, ClientEnv, matchUnion, parseBaseUrl)
 import SmartPrimitives.Positive (pattern Positive)
 import SmartPrimitives.TextLenRange (unTextLenRange)
 import SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen)
 import System.Environment (getEnv)
 import Telegram.Bot.Simple.UpdateParser (parseUpdate, command, commandWithBotName, callbackQueryDataRead)
-import Orphan ()
+import Telegram.Bot.AppM (AppEnv(..), AppM (AppM), tg, AppError(..))
 
 -- TODO remove this function and replace it with users parsed alongside with transitions
 currentUser :: AppM TG.User
@@ -113,43 +113,12 @@ mkBotApp backendClientEnv authClientEnv secret botName = BotApp
   } where
     botHandler = fmap nt . handleTransition
     nt :: Eff' transition state -> Eff transition state
-    nt = flip runReaderT Env{..}
-
-newtype AppM a = AppM
-  { _unAppM :: ReaderT Env (StateT (Maybe (Token, UTCTime)) (ExceptT AppError BotM)) a }
-  deriving
-    ( Functor, Applicative
-    , Monad, MonadIO
-    , MonadReader Env
-    , MonadState (Maybe (Token, UTCTime))
-    , MonadError AppError
-    )
-
-newtype AppError = AppClientError ClientError
-  deriving (Show)
-
-instance FromClientError AppError where
-  fromClientError = AppClientError
-
-data Env = Env
-  { backendClientEnv :: ClientEnv
-  , authClientEnv :: ClientEnv
-  , secret :: String
-  }
-
-instance HasKeyedClientEnv Env "backend" where
-  getClientEnv _ = backendClientEnv
-
-instance HasKeyedClientEnv Env "auth" where
-  getClientEnv _ = authClientEnv
-
-tg :: BotM a -> AppM a
-tg = AppM . lift . lift . lift
-
-type Eff' action = ReaderT Env (Eff action)
+    nt = flip runReaderT AppEnv{..}
 
 tshow :: Show a => a -> Text
 tshow = T.pack . show
+
+type Eff' action = ReaderT AppEnv (Eff action)
 
 infix 0 <#
 (<#) :: GetAction a Transition => state -> AppM a -> Eff' Transition state
