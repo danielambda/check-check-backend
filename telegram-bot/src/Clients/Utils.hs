@@ -4,7 +4,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 
-module ClientMUtils
+module Clients.Utils
   ( runReq, runReq_
   , AsKeyedClientM(..)
   , HasKeyedClientEnv(..)

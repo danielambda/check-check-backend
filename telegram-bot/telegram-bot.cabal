@@ -11,12 +11,22 @@ build-type:     Simple
 executable telegram-bot
   main-is: Main.hs
   other-modules:
-      AuthServiceClient
-      BackendClient
-      ClientMUtils
+      Clients.AuthService
+      Clients.Backend
+      Clients.Utils
+      Models
       Orphan
       Telegram.Bot.AppM
       Telegram.Bot.FSA
+      Telegram.Bot.FSA.Transitions.AddContact
+      Telegram.Bot.FSA.Transitions.CancelSelectingRequestRecipient
+      Telegram.Bot.FSA.Transitions.Id
+      Telegram.Bot.FSA.Transitions.SelectReceiptItem
+      Telegram.Bot.FSA.Transitions.SelectRequestRecipient
+      Telegram.Bot.FSA.Transitions.ShowReceipt
+      Telegram.Bot.FSA.Transitions.Start
+      Telegram.Bot.FSA.Transitions.StartSelectingReceiptItems
+      Telegram.Bot.FSA.Transitions.StartSelectingRequestRecipient
       Paths_telegram_bot
   hs-source-dirs:
       src

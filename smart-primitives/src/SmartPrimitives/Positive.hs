@@ -8,13 +8,12 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module SmartPrimitives.Positive
-  ( Positive, mkPositive, unPositive
+  ( Positive(Positive), mkPositive, unPositive
   , mkUnsafePositive
   , plus, mult
   , sumPositive
   , ceilingPositive
   , negateNeg
-  , pattern Positive
   ) where
 
 import Servant (FromHttpApiData (parseUrlPiece))

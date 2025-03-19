@@ -4,8 +4,13 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 
-module SmartPrimitives.TextLenRange (TextLenRange, mkTextLenRange, unTextLenRange) where
+module SmartPrimitives.TextLenRange
+  ( TextLenRange(TextLenRange)
+  , mkTextLenRange
+  , unTextLenRange
+  ) where
 
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -20,8 +25,12 @@ import Data.Aeson (FromJSON (parseJSON), ToJSON)
 
 import SmartPrimitives.Internal (mkFromFieldEither, mkParseUrlPieceEither, mkParseJSONEither)
 
-newtype TextLenRange (min :: Nat) (max :: Nat) = TextLenRange Text
+newtype TextLenRange (min :: Nat) (max :: Nat) = MkTextLenRange Text
   deriving (ToField, ToJSON)
+
+{-# COMPLETE TextLenRange #-}
+pattern TextLenRange :: Text -> TextLenRange min max
+pattern TextLenRange txt <- MkTextLenRange txt
 
 data TextLenRangeError
   = TextLenTooShort Int -- Expected min length
@@ -33,14 +42,14 @@ mkTextLenRange :: forall min max. (KnownNat min, KnownNat max)
 mkTextLenRange text
   | len < minLen = Left $ TextLenTooShort minLen
   | len > maxLen = Left $ TextLenTooLong minLen
-  | otherwise = Right $ TextLenRange text
+  | otherwise = Right $ MkTextLenRange text
   where
     len = T.length text
     minLen = fromInteger $ natVal (Proxy @min)
     maxLen = fromInteger $ natVal (Proxy @max)
 
 unTextLenRange :: TextLenRange min max -> Text
-unTextLenRange (TextLenRange text) = text
+unTextLenRange (MkTextLenRange text) = text
 
 parseErrorMsg :: (Semigroup s, IsString s) => TextLenRangeError -> s
 parseErrorMsg (TextLenTooShort n) = "text length has to be as least " <> fromString (show n)
