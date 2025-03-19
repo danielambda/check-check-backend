@@ -40,12 +40,12 @@ import Control.Monad.Reader (MonadReader (ask), asks, MonadTrans (lift), ReaderT
 import Control.Monad.State (StateT(runStateT), MonadState (get, put))
 import Control.Monad (unless, forM, (>=>))
 import Data.Functor ((<&>))
-import Data.List.NonEmpty (NonEmpty, nonEmpty, toList, singleton)
+import Data.List.NonEmpty (nonEmpty, toList, singleton)
 import Data.Text (Text)
 import Data.Time (getCurrentTime, addUTCTime, secondsToNominalDiffTime)
 import Data.UUID (UUID, toString)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
-import Optics (LabelOptic (labelOptic), A_Getter, to, unsafeFiltered, (%), (&), traversed, _1, _2, (.~), (^.), view)
+import Optics (unsafeFiltered, (%), (&), traversed, _1, _2, (.~), (^.), view)
 import Orphan ()
 import qualified Data.Text as T
 import qualified Telegram.Bot.API as TG
@@ -58,51 +58,20 @@ import SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen)
 import System.Environment (getEnv)
 import Telegram.Bot.Simple.UpdateParser (parseUpdate, command, commandWithBotName, callbackQueryDataRead)
 import Telegram.Bot.AppM (AppEnv(..), AppM (AppM), tg, AppError(..))
+import Telegram.Bot.FSA (State(..), Transition(..), ReceiptItem (..))
 
 -- TODO remove this function and replace it with users parsed alongside with transitions
 currentUser :: AppM TG.User
 currentUser = AppM $ lift $ do
   userFromMessage <- asks $ botContextUpdate >=> updateMessage >=> messageFrom
   userFromCallback <- asks $ botContextUpdate >=> updateCallbackQuery .> fmap callbackQueryFrom
-  maybe (throwError (AppClientError undefined)) return $ userFromMessage <|> userFromCallback
-  -- TODO add proper error to throw
+  maybe (throwError (AppClientError undefined)) return $ userFromMessage <|> userFromCallback -- TODO add proper error to throw
   where (.>) = flip (.)
-
-data ReceiptItem = ReceiptItem
-  { index :: Int
-  , name :: Text
-  , price :: Integer
-  , quantity :: Double
-  } deriving (Show, Read)
 
 data UserContact = UserContact
   { contactUserId :: UUID
   , mContactName :: Maybe (TextMaxLen 50)
   }
-
-instance LabelOptic "index" A_Getter ReceiptItem ReceiptItem Int Int where
-  labelOptic = to $ \ReceiptItem{ index } -> index
-instance LabelOptic "name" A_Getter ReceiptItem ReceiptItem Text Text where
-  labelOptic = to $ \ReceiptItem{ name } -> name
-
-data State
-  = InitialState
-  | SelectingReceiptItems Text [(Bool, ReceiptItem)]
-  | SelectingRequestRecipient Text (NonEmpty Int)
-  deriving Show
-
-data Transition
-  = GetCurrentState
-  | Id
-  | Start
-  | ShowReceipt Text
-  | AddContact Text
-  | StartSelectingReceiptItems Text [ReceiptItem]
-  | SelectReceiptItem Int
-  | StartSelectingRequestRecipient
-  | SelectRequestRecipient UUID
-  | CancelSelectingRequestRecipient
-  deriving (Read, Show)
 
 mkBotApp :: ClientEnv -> ClientEnv -> String -> BotName -> BotApp State Transition
 mkBotApp backendClientEnv authClientEnv secret botName = BotApp

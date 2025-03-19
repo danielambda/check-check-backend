@@ -16,6 +16,7 @@ executable telegram-bot
       ClientMUtils
       Orphan
       Telegram.Bot.AppM
+      Telegram.Bot.FSA
       Paths_telegram_bot
   hs-source-dirs:
       src

@@ -10,13 +10,13 @@ module Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
   , mkEnumFieldParser
   ) where
 
+import Database.PostgreSQL.Simple.FromField (FieldParser, typename, returnError, ResultError (..))
 import Data.ByteString (ByteString)
 
-import GHC.Generics
 import Control.Applicative ((<|>))
 import Data.String (IsString(fromString))
 import Data.Typeable (Typeable)
-import Database.PostgreSQL.Simple.FromField (FieldParser, typename, returnError, ResultError (..))
+import GHC.Generics (Generic(..), Constructor(..), V1, U1(..), M1(..), type (:+:)(..), D1, C1)
 
 class ByteStringParsableEnum a where
   parseEnumBS :: ByteString -> Maybe a

@@ -2,10 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Telegram.Bot.AppM
-  ( AppM(..), AppError(..), AppEnv(..)
-  , tg
-  ) where
+module Telegram.Bot.AppM (AppM(..), AppError(..), AppEnv(..), tg) where
 
 import Data.Time (UTCTime)
 import Servant.Auth.Client (Token)
