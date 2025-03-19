@@ -20,6 +20,7 @@ import Servant.API ((:<|>), Get, JSON, ReqBody, (:>), Post, Capture, Delete, NoC
 import GHC.Generics (Generic)
 
 import SmartPrimitives.TextMaxLen (TextMaxLen)
+import SmartPrimitives.TextLenRange (TextLenRange)
 
 type ContactsAPI
   =    GetContacts
@@ -42,6 +43,7 @@ data CreateContactReqBody = CreateContactReqBody
 
 data ContactResp = ContactResp
   { contactUserId :: UUID
+  , contactUsername :: TextLenRange 2 50
   , contactName :: Maybe (TextMaxLen 50)
   } deriving (Generic, ToJSON, FromJSON)
 

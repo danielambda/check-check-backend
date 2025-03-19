@@ -46,10 +46,12 @@ instance (GParse a, GParse b) => GParse (a :+: b) where
     <|> R1 <$> gParse str
 
 instance (Constructor c) => GParse (C1 c U1) where
-  gParse str =
-    if str == fromString (conName (undefined :: C1 c U1 p))
+  gParse str = if str == fromString (conName typeProvider)
     then Just (M1 U1)
     else Nothing
+    where
+      typeProvider :: C1 c U1 p
+      typeProvider = typeProvider
 
 instance GParse V1 where
   gParse _ = Nothing

@@ -70,7 +70,7 @@ instance MonadPG m => UsersRepository (UsersRepositoryT m) where
   updateSomeUserInRepo = updateSomeUserInDb
   getGroupsOwnedByFromRepo = getGroupsOwnedByFromDb
   getGroupsParticipatedByFromRepo = getGroupsParticipatedByFromDb
-  getContactsFromRepo = getContactsFromDb
+  getContactsWithUsernamesFromRepo = getContactsWithUsernamesFromDb
   addContactToRepo = addContactToDb
   deleteContactFromRepo = deleteContactFromDb
 
@@ -214,12 +214,16 @@ getGroupsParticipatedByFromDb (UserId userSingleId) =
             )
           )
 
-getContactsFromDb :: MonadPG m => UserId 'Single -> m [UserContact]
-getContactsFromDb (UserId userId) = map toDomainContact <$> query [sql|
-  SELECT userId, contactUserId, contactName
-  FROM userContacts
+getContactsWithUsernamesFromDb :: MonadPG m => UserId 'Single -> m [(UserContact, Username)]
+getContactsWithUsernamesFromDb (UserId userId) = map process <$> query [sql|
+  SELECT contactUserId, contactName, username
+  FROM userContacts NATURAL JOIN users
   WHERE userId = ?
 |] (Only userId)
+  where
+    process :: (UUID, Maybe (TextMaxLen 50), TextLenRange 2 50) -> (UserContact, Username)
+    process (contactUserId, contactName, username) =
+      (toDomainContact DbUserContact{..}, Username username)
 
 addContactToDb :: MonadPG m => UserId 'Single -> UserContact -> m ()
 addContactToDb userId userContact = void $ execute [sql|
