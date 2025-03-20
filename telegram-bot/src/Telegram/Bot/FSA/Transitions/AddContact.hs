@@ -8,7 +8,6 @@
 module Telegram.Bot.FSA.Transitions.AddContact (handleTransition) where
 
 import Telegram.Bot.Simple (replyText)
-import Data.Text (Text)
 import qualified Data.Text as T
 import Servant.Auth.Client (Token)
 import Servant.API.UVerb (matchUnion, WithStatus)
@@ -21,7 +20,7 @@ import Clients.Utils (runReq, runReq_)
 import Telegram.Bot.AppM (currentUser, authViaTelegram, (<#), Eff', tg, AppM)
 import Telegram.Bot.FSA (State(InitialState), Transition)
 
-handleTransition :: Text -> State -> Eff' Transition State
+handleTransition :: T.Text -> State -> Eff' Transition State
 handleTransition content _ = InitialState <# do
   token <- authViaTelegram =<< currentUser
   case T.uncons content of
@@ -31,7 +30,7 @@ handleTransition content _ = InitialState <# do
 
 data UsernameType = Telegram | Regular
 
-processContact :: UsernameType -> Text -> Token -> AppM ()
+processContact :: UsernameType -> T.Text -> Token -> AppM ()
 processContact usernameType content token = do
   let (baseUsername, mContactNamePart) = T.span (/= ' ') content
       mContactNameRaw = T.strip mContactNamePart

@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module Models (UserContact(..), ReceiptItem(..)) where
+module Models (FromResp(fromResp), UserContact(..), ReceiptItem(..)) where
 
 import Data.UUID (UUID)
 
@@ -9,6 +11,11 @@ import SmartPrimitives.TextLenRange (TextLenRange)
 import SmartPrimitives.TextMaxLen (TextMaxLen)
 import Data.Text (Text)
 import Optics (LabelOptic (labelOptic), A_Getter, to)
+import CheckCheck.Contracts.Receipts (ReceiptItemResp (..))
+import SmartPrimitives.Positive (Positive(..))
+
+class FromResp resp a | resp -> a where
+  fromResp :: resp -> a
 
 data UserContact = UserContact
   { contactUserId :: UUID
@@ -23,8 +30,13 @@ data ReceiptItem = ReceiptItem
   , quantity :: Double
   } deriving (Show, Read)
 
+instance FromResp ReceiptItemResp ReceiptItem where
+  fromResp ReceiptItemResp{price = Positive price, quantity = Positive quantity, ..} =
+    ReceiptItem{..}
+
 instance LabelOptic "index" A_Getter ReceiptItem ReceiptItem Int Int where
-  labelOptic = to index
+  labelOptic = to $ \ReceiptItem{index} ->  index
 instance LabelOptic "name" A_Getter ReceiptItem ReceiptItem Text Text where
-  labelOptic = to name
+  labelOptic = to $ \ReceiptItem{name} -> name
+
 

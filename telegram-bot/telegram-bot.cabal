@@ -27,6 +27,7 @@ executable telegram-bot
       Telegram.Bot.FSA.Transitions.Start
       Telegram.Bot.FSA.Transitions.StartSelectingReceiptItems
       Telegram.Bot.FSA.Transitions.StartSelectingRequestRecipient
+      Telegram.Bot.UI
       Paths_telegram_bot
   hs-source-dirs:
       src

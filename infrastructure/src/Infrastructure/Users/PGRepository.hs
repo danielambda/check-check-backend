@@ -217,8 +217,9 @@ getGroupsParticipatedByFromDb (UserId userSingleId) =
 getContactsWithUsernamesFromDb :: MonadPG m => UserId 'Single -> m [(UserContact, Username)]
 getContactsWithUsernamesFromDb (UserId userId) = map process <$> query [sql|
   SELECT contactUserId, contactName, username
-  FROM userContacts NATURAL JOIN users
-  WHERE userId = ?
+  FROM userContacts
+  JOIN users ON users.userId = contactUserId
+  WHERE userContacts.userId = ?
 |] (Only userId)
   where
     process :: (UUID, Maybe (TextMaxLen 50), TextLenRange 2 50) -> (UserContact, Username)
