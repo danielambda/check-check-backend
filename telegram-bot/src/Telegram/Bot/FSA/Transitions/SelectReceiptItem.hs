@@ -5,7 +5,7 @@
 module Telegram.Bot.FSA.Transitions.SelectReceiptItem (handleTransition) where
 
 import Telegram.Bot.Simple (actionButton, editUpdateMessage)
-import Optics ((&), (%), unsafeFiltered, traversed, (^.), _1, _2, (.~))
+import Optics ((&), (%), unsafeFiltered, traversed, (^.), _1, _2, (%~))
 
 import Telegram.Bot.AppM ((<#), tg, Eff')
 import Telegram.Bot.UI (toSelectReceiptItemButton, messageWithButtons, tshow)
@@ -27,6 +27,6 @@ handleTransition i (SelectingReceiptItems qr initialItems) = SelectingReceiptIte
   let selectedIndices = (^. _2 % #index) <$> filter fst items
   let editMsg = messageWithButtons ("Selected receipt items: " <> tshow selectedIndices) buttons
   tg $ editUpdateMessage editMsg
-  where items = initialItems & traversed % unsafeFiltered ((i ==) . (^. _2 % #index)) % _1 .~ True
+  where items = initialItems & traversed % unsafeFiltered ((i ==) . (^. _2 % #index)) % _1 %~ not
 
 handleTransition _ _ = error "TODO"
