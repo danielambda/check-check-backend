@@ -21,14 +21,14 @@ import Telegram.Bot.AppM (currentUser, authViaTelegram, (<#), Eff', tg, AppM)
 import Telegram.Bot.FSA (State(InitialState), Transition)
 
 handleTransition :: T.Text -> State -> Eff' Transition State
-handleTransition content _ = InitialState <# do
+handleTransition content InitialState = InitialState <# do
   token <- authViaTelegram =<< currentUser
   case T.uncons content of
     Nothing -> tg $ replyText "Please, enter non empty username to add to contacts"
     Just ('@', rest) -> processContact Telegram rest token
     Just _ -> processContact Regular content token
 
-data UsernameType = Telegram | Regular
+handleTransition _ _ = error "TODO"
 
 processContact :: UsernameType -> T.Text -> Token -> AppM ()
 processContact usernameType content token = do
@@ -73,3 +73,5 @@ processContact usernameType content token = do
 
     handleUserNotFound formattedUsername Regular =
       tg $ replyText $ "User " <> formattedUsername <> " is not registered in check-check"
+
+data UsernameType = Telegram | Regular

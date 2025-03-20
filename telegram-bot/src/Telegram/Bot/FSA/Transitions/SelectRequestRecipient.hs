@@ -23,5 +23,6 @@ handleTransition recipientId (SelectingRequestRecipient qr indices) = InitialSta
         }
   runReq_ $ sendRequest token reqBody
   tg $ replyText "Request successfully sent"
+
 handleTransition _ _ = error "TODO"
 

@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLabels #-}
 
@@ -7,51 +5,39 @@ module Telegram.Bot.FSA.Transitions.StartSelectingRequestRecipient (handleTransi
 
 import Optics ((&), view, (<&>))
 import qualified Data.Text as T
-import Telegram.Bot.API (InlineKeyboardMarkup(..), SomeReplyMarkup (..))
-import Telegram.Bot.Simple (ReplyMessage (..), replyText, reply, toReplyMessage, actionButton)
+import Telegram.Bot.Simple (replyText, reply, actionButton)
 
-import Control.Monad (forM)
 import Data.Foldable (toList)
 import Data.List.NonEmpty (nonEmpty)
 
-import SmartPrimitives.TextLenRange (TextLenRange(..))
-import SmartPrimitives.TextMaxLen (unTextMaxLen)
-import CheckCheck.Contracts.Users.Contacts (ContactResp(..))
 import Clients.Backend (getContacts)
 import Clients.Utils (runReq)
-import Models (ReceiptItem(..), UserContact(..))
+import Models (FromResp (fromResp))
 import Telegram.Bot.AppM ((<#), tg, authViaTelegram, currentUser, Eff')
+import Telegram.Bot.UI (tshow, messageWithButtons, toSelectRequestRecipientButton)
 import Telegram.Bot.FSA
   ( State(SelectingReceiptItems, SelectingRequestRecipient)
-  , Transition (CancelSelectingRequestRecipient, SelectRequestRecipient)
+  , Transition (CancelSelectingRequestRecipient)
   )
+import GHC.Float (divideDouble)
 
 handleTransition :: State -> Eff' Transition State
-handleTransition (SelectingReceiptItems qr items) = case nonEmpty $ items & filter fst & map snd of
-  Nothing -> SelectingReceiptItems qr items <# do
+handleTransition (SelectingReceiptItems qr allItems) = case nonEmpty $ allItems & filter fst & map snd of
+  Nothing -> SelectingReceiptItems qr allItems <# do
     tg $ replyText "this text has to be edited, btw you did not select anything"
 
-  Just filteredItems -> SelectingRequestRecipient qr (view #index <$> filteredItems) <# do
-    let overallSum = (`divide` 100) $ sum $ filteredItems <&>
-          \ReceiptItem{ quantity, price } ->
-            round (fromIntegral price * quantity)
+  Just items -> SelectingRequestRecipient qr (view #index <$> items) <# do
+    let receiptTotal = ((`divideDouble` 100) . fromInteger) $ sum $ items <&> view #itemTotal
     let replyMsgText = T.unlines
-          $ ("В сумме на: " <> T.pack (show overallSum))
-          : (view #name <$> toList filteredItems)
+          $ ("В сумме на: " <> tshow receiptTotal)
+          : (view #name <$> toList items)
     token <- authViaTelegram =<< currentUser
     contactsResp <- runReq $ getContacts token
-    let contacts = contactsResp <&> \ContactResp{..} ->
-          UserContact{ mContactName = contactName, ..}
-    buttons <- forM contacts $ \UserContact{ contactUsername = TextLenRange contactUsername, ..} -> do
-      let name = maybe contactUsername unTextMaxLen mContactName
-      return $ actionButton name (SelectRequestRecipient contactUserId)
-    let buttons' = buttons ++ [actionButton "Cancel" CancelSelectingRequestRecipient]
-    let replyMsg = (toReplyMessage replyMsgText)
-          { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-            { inlineKeyboardMarkupInlineKeyboard = (:[]) <$> buttons' }
-          }
+    let contacts = fromResp <$> contactsResp
+    let contactsButtons = (:[]) . toSelectRequestRecipientButton <$> contacts
+    let bottomButtonRow = [[actionButton "Cancel" CancelSelectingRequestRecipient]]
+    let buttons = contactsButtons ++ bottomButtonRow
+    let replyMsg = messageWithButtons replyMsgText buttons
     tg $ reply replyMsg
-handleTransition _ = error "TODO"
 
-divide :: Int -> Double -> Double
-divide a b = fromIntegral a / b
+handleTransition _ = error "TODO"

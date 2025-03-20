@@ -15,6 +15,7 @@ import Models (ReceiptItem(..))
 
 data State
   = InitialState
+  | ViewingReceipt Text [ReceiptItem]
   | SelectingReceiptItems Text [(Bool, ReceiptItem)]
   | SelectingRequestRecipient Text (NonEmpty Int)
   deriving Show
@@ -22,9 +23,10 @@ data State
 data Transition
   = Id
   | Start
-  | ShowReceipt Text
   | AddContact Text
-  | StartSelectingReceiptItems Text [ReceiptItem]
+  | ShowReceipt Text
+  | ShowReceipt' Text [ReceiptItem]
+  | CancelViewingReceipt
   | SelectReceiptItem Int
   | StartSelectingRequestRecipient
   | SelectRequestRecipient UUID

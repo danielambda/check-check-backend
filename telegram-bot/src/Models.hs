@@ -13,6 +13,7 @@ import Data.Text (Text)
 import Optics (LabelOptic (labelOptic), A_Getter, to)
 import CheckCheck.Contracts.Receipts (ReceiptItemResp (..))
 import SmartPrimitives.Positive (Positive(..))
+import CheckCheck.Contracts.Users.Contacts (ContactResp (..))
 
 class FromResp resp a | resp -> a where
   fromResp :: resp -> a
@@ -22,6 +23,9 @@ data UserContact = UserContact
   , contactUsername :: TextLenRange 2 50
   , mContactName :: Maybe (TextMaxLen 50)
   }
+
+instance FromResp ContactResp UserContact where
+  fromResp ContactResp{..} = UserContact{ mContactName = contactName, ..}
 
 data ReceiptItem = ReceiptItem
   { index :: Int
@@ -38,5 +42,7 @@ instance LabelOptic "index" A_Getter ReceiptItem ReceiptItem Int Int where
   labelOptic = to $ \ReceiptItem{index} ->  index
 instance LabelOptic "name" A_Getter ReceiptItem ReceiptItem Text Text where
   labelOptic = to $ \ReceiptItem{name} -> name
+instance LabelOptic "itemTotal" A_Getter ReceiptItem ReceiptItem Integer Integer where
+  labelOptic = to $ \ReceiptItem {price, quantity} -> round $ fromInteger price * quantity
 
 

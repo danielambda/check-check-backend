@@ -17,4 +17,5 @@ handleTransition InitialState = InitialState <# do
   token <- authViaTelegram =<< currentUser
   UserResp{ username } <- runReq $ getMe token
   tg $ replyText $ "Nice to see you, " <> unTextLenRange username
+
 handleTransition _ = error "TODO"

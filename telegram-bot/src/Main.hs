@@ -36,6 +36,7 @@ import qualified Telegram.Bot.FSA.Transitions.ShowReceipt as ShowReceipt
 import qualified Telegram.Bot.FSA.Transitions.Start as Start
 import qualified Telegram.Bot.FSA.Transitions.StartSelectingReceiptItems as StartSelectingReceiptItems
 import qualified Telegram.Bot.FSA.Transitions.StartSelectingRequestRecipient as StartSelectingRequestRecipient
+import qualified Telegram.Bot.FSA.Transitions.CancelViewingReceipt as CancelViewingReceipt
 
 mkBotApp :: ClientEnv -> ClientEnv -> String -> BotName -> BotApp State Transition
 mkBotApp backendClientEnv authClientEnv secret botName = BotApp
@@ -59,6 +60,16 @@ decideTransition (BotName botName) state = parseUpdate parser
         <|> AddContact <$> command' "contact"
         <|> Start <$ command' "start"
 
+      ViewingReceipt{} -> do
+        transition <- callbackQueryDataRead
+        unless (isAllowed transition) $
+          fail "unsupported transition"
+        return transition
+        where
+          isAllowed CancelViewingReceipt{} = True
+          isAllowed SelectReceiptItem{} = True
+          isAllowed _ = False
+
       SelectingReceiptItems{} -> do
         transition <- callbackQueryDataRead
         unless (isAllowed transition) $
@@ -81,13 +92,15 @@ decideTransition (BotName botName) state = parseUpdate parser
 
 handleTransition :: Transition -> State -> Eff' Transition State
 handleTransition (AddContact contact) = AddContact.handleTransition contact
+handleTransition CancelViewingReceipt{} = CancelViewingReceipt.handleTransition
 handleTransition CancelSelectingRequestRecipient = CancelSelectingRequestRecipient.handleTransition
 handleTransition Id = Id.handleTransition
 handleTransition (SelectReceiptItem i) = SelectReceiptItem.handleTransition i
 handleTransition (SelectRequestRecipient recipientId) = SelectRequestRecipient.handleTransition recipientId
 handleTransition (ShowReceipt qr) = ShowReceipt.handleTransition qr
+handleTransition (ShowReceipt' qr items) = ShowReceipt.handleTransition' qr items
 handleTransition Start = Start.handleTransition
-handleTransition (StartSelectingReceiptItems qr items) = StartSelectingReceiptItems.handleTransition qr items
+-- handleTransition StartSelectingReceiptItems = StartSelectingReceiptItems.handleTransition
 handleTransition StartSelectingRequestRecipient = StartSelectingRequestRecipient.handleTransition
 
 data RunConfig = RunConfig

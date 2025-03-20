@@ -1,8 +1,14 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module Telegram.Bot.UI (tshow, messageWithButtons, toSelectReceiptItemButton) where
+module Telegram.Bot.UI
+  ( tshow, messageWithButtons
+  , formatReceiptItem
+  , toSelectReceiptItemButton
+  , toSelectRequestRecipientButton
+  ) where
 
 import Optics (view)
 import Telegram.Bot.Simple
@@ -18,8 +24,10 @@ import qualified Data.Text as T
 
 import Control.Arrow ((&&&))
 
-import Models (ReceiptItem(..))
-import Telegram.Bot.FSA (Transition (SelectReceiptItem))
+import Models (ReceiptItem(..), UserContact (..))
+import Telegram.Bot.FSA (Transition (SelectReceiptItem, SelectRequestRecipient))
+import SmartPrimitives.TextLenRange (TextLenRange(..))
+import SmartPrimitives.TextMaxLen (unTextMaxLen)
 
 tshow :: Show a => a -> T.Text
 tshow = T.pack . show
@@ -35,22 +43,24 @@ instance MessageWithButtons EditMessage where
   messageWithButtons txt buttons = (toEditMessage txt)
     {editMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup buttons}
 
+formatReceiptItem :: ReceiptItem -> T.Text
+formatReceiptItem item@ReceiptItem{index, name, quantity}
+  =  tshow index <> ". "
+  <> T.take 20 name <> "... x "
+  <> tshow quantity <> " = "
+  <> tshow priceSum <> " rub"
+  where
+  priceSum = view #itemTotal item `divide` 100 :: Double
+    where divide a b = fromIntegral a / b
+
 toSelectReceiptItemButton :: ReceiptItem -> InlineKeyboardButton
 toSelectReceiptItemButton
   = (\(i, item) -> actionButton item (SelectReceiptItem i))
   . process
   where
-  process = view #index &&& toBtnText
-  toBtnText ReceiptItem{index, name, quantity, price}
-    =  tshow index <> ". "
-    <> T.take 20 name <> "... x "
-    <> tshow quantity <> " = "
-    <> tshow priceSum <> " rub"
-    where
+  process = view #index &&& formatReceiptItem
 
-    priceSum :: Double
-    priceSum = round (fromIntegral price * quantity) `divide` 100
-      where
-      divide :: Integer -> Double -> Double
-      divide a b = fromIntegral a / b
-
+toSelectRequestRecipientButton :: UserContact -> InlineKeyboardButton
+toSelectRequestRecipientButton UserContact{ contactUsername = TextLenRange contactUsername, ..} =
+  let name = maybe contactUsername unTextMaxLen mContactName
+  in actionButton name (SelectRequestRecipient contactUserId)

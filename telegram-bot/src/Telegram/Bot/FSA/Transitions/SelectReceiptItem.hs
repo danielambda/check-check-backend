@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Telegram.Bot.FSA.Transitions.SelectReceiptItem (handleTransition) where
 
@@ -9,12 +10,15 @@ import Optics ((&), (%), unsafeFiltered, traversed, (^.), _1, _2, (.~))
 import Telegram.Bot.AppM ((<#), tg, Eff')
 import Telegram.Bot.UI (toSelectReceiptItemButton, messageWithButtons, tshow)
 import Telegram.Bot.FSA
-  ( State(SelectingReceiptItems)
+  ( State(SelectingReceiptItems, ViewingReceipt)
   , Transition (StartSelectingRequestRecipient, Id)
   )
 
 handleTransition :: Int -> State -> Eff' Transition State
-handleTransition i (SelectingReceiptItems qr allItems) = SelectingReceiptItems qr items <# do
+handleTransition i (ViewingReceipt qr items) =
+  handleTransition i (SelectingReceiptItems qr $ (False,) <$> items)
+
+handleTransition i (SelectingReceiptItems qr initialItems) = SelectingReceiptItems qr items <# do
   let itemsButtons = (:[]) . toSelectReceiptItemButton . snd <$> items
   let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
   let cancelButton  = actionButton "Cancel"  Id
@@ -23,6 +27,6 @@ handleTransition i (SelectingReceiptItems qr allItems) = SelectingReceiptItems q
   let selectedIndices = (^. _2 % #index) <$> filter fst items
   let editMsg = messageWithButtons ("Selected receipt items: " <> tshow selectedIndices) buttons
   tg $ editUpdateMessage editMsg
-  where items = allItems & traversed % unsafeFiltered ((i ==) . (^. _2 % #index)) % _1 .~ True
+  where items = initialItems & traversed % unsafeFiltered ((i ==) . (^. _2 % #index)) % _1 .~ True
 
 handleTransition _ _ = error "TODO"
