@@ -19,6 +19,7 @@ executable telegram-bot
       Telegram.Bot.AppM
       Telegram.Bot.FSA
       Telegram.Bot.FSA.Transitions.AddContact
+      Telegram.Bot.FSA.Transitions.CancelSelectingReceiptItems
       Telegram.Bot.FSA.Transitions.CancelSelectingRequestRecipient
       Telegram.Bot.FSA.Transitions.CancelViewingReceipt
       Telegram.Bot.FSA.Transitions.Id
@@ -26,7 +27,6 @@ executable telegram-bot
       Telegram.Bot.FSA.Transitions.SelectRequestRecipient
       Telegram.Bot.FSA.Transitions.ShowReceipt
       Telegram.Bot.FSA.Transitions.Start
-      Telegram.Bot.FSA.Transitions.StartSelectingReceiptItems
       Telegram.Bot.FSA.Transitions.StartSelectingRequestRecipient
       Telegram.Bot.UI
       Paths_telegram_bot

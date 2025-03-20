@@ -34,9 +34,9 @@ import qualified Telegram.Bot.FSA.Transitions.SelectReceiptItem as SelectReceipt
 import qualified Telegram.Bot.FSA.Transitions.SelectRequestRecipient as SelectRequestRecipient
 import qualified Telegram.Bot.FSA.Transitions.ShowReceipt as ShowReceipt
 import qualified Telegram.Bot.FSA.Transitions.Start as Start
-import qualified Telegram.Bot.FSA.Transitions.StartSelectingReceiptItems as StartSelectingReceiptItems
 import qualified Telegram.Bot.FSA.Transitions.StartSelectingRequestRecipient as StartSelectingRequestRecipient
 import qualified Telegram.Bot.FSA.Transitions.CancelViewingReceipt as CancelViewingReceipt
+import qualified Telegram.Bot.FSA.Transitions.CancelSelectingReceiptItems as CancelSelecintReceiptItems
 
 mkBotApp :: ClientEnv -> ClientEnv -> String -> BotName -> BotApp State Transition
 mkBotApp backendClientEnv authClientEnv secret botName = BotApp
@@ -60,48 +60,39 @@ decideTransition (BotName botName) state = parseUpdate parser
         <|> AddContact <$> command' "contact"
         <|> Start <$ command' "start"
 
-      ViewingReceipt{} -> do
-        transition <- callbackQueryDataRead
-        unless (isAllowed transition) $
-          fail "unsupported transition"
-        return transition
-        where
-          isAllowed CancelViewingReceipt{} = True
-          isAllowed SelectReceiptItem{} = True
-          isAllowed _ = False
+      ViewingReceipt{} -> callbackQueryDataWhich isAllowed where
+        isAllowed CancelViewingReceipt{} = True
+        isAllowed SelectReceiptItem{} = True
+        isAllowed _ = False
 
-      SelectingReceiptItems{} -> do
-        transition <- callbackQueryDataRead
-        unless (isAllowed transition) $
-          fail "unsupported transition"
-        return transition
-        where
-          isAllowed SelectReceiptItem{} = True
-          isAllowed StartSelectingRequestRecipient{} = True
-          isAllowed _ = False
+      SelectingReceiptItems{} -> callbackQueryDataWhich isAllowed where
+        isAllowed SelectReceiptItem{} = True
+        isAllowed StartSelectingRequestRecipient{} = True
+        isAllowed _ = False
 
-      SelectingRequestRecipient{} -> do
-        transition <- callbackQueryDataRead
-        unless (isAllowed transition) $
-          fail "unsupported transition"
-        return transition
-        where
-          isAllowed SelectRequestRecipient{} = True
-          isAllowed CancelSelectingRequestRecipient{} = True
-          isAllowed _ = False
+      SelectingRequestRecipient{} -> callbackQueryDataWhich isAllowed where
+        isAllowed SelectRequestRecipient{} = True
+        isAllowed CancelSelectingRequestRecipient{} = True
+        isAllowed _ = False
+      where
+        callbackQueryDataWhich isAllowed = do
+          transition <- callbackQueryDataRead
+          unless (isAllowed transition) $
+            fail "unsupported transition"
+          return transition
 
 handleTransition :: Transition -> State -> Eff' Transition State
-handleTransition (AddContact contact) = AddContact.handleTransition contact
-handleTransition CancelViewingReceipt{} = CancelViewingReceipt.handleTransition
-handleTransition CancelSelectingRequestRecipient = CancelSelectingRequestRecipient.handleTransition
 handleTransition Id = Id.handleTransition
-handleTransition (SelectReceiptItem i) = SelectReceiptItem.handleTransition i
-handleTransition (SelectRequestRecipient recipientId) = SelectRequestRecipient.handleTransition recipientId
+handleTransition Start = Start.handleTransition
+handleTransition (AddContact contact) = AddContact.handleTransition contact
+handleTransition CancelViewingReceipt = CancelViewingReceipt.handleTransition
 handleTransition (ShowReceipt qr) = ShowReceipt.handleTransition qr
 handleTransition (ShowReceipt' qr items) = ShowReceipt.handleTransition' qr items
-handleTransition Start = Start.handleTransition
--- handleTransition StartSelectingReceiptItems = StartSelectingReceiptItems.handleTransition
+handleTransition (SelectReceiptItem i) = SelectReceiptItem.handleTransition i
+handleTransition CancelSelecingReceiptItems = CancelSelecintReceiptItems.handleTransition
 handleTransition StartSelectingRequestRecipient = StartSelectingRequestRecipient.handleTransition
+handleTransition CancelSelectingRequestRecipient = CancelSelectingRequestRecipient.handleTransition
+handleTransition (SelectRequestRecipient recipientId) = SelectRequestRecipient.handleTransition recipientId
 
 data RunConfig = RunConfig
   { authApiKey :: String

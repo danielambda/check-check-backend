@@ -11,7 +11,7 @@ import Telegram.Bot.AppM ((<#), tg, Eff')
 import Telegram.Bot.UI (toSelectReceiptItemButton, messageWithButtons, tshow)
 import Telegram.Bot.FSA
   ( State(SelectingReceiptItems, ViewingReceipt)
-  , Transition (StartSelectingRequestRecipient, Id)
+  , Transition (StartSelectingRequestRecipient, CancelSelecingReceiptItems)
   )
 
 handleTransition :: Int -> State -> Eff' Transition State
@@ -21,7 +21,7 @@ handleTransition i (ViewingReceipt qr items) =
 handleTransition i (SelectingReceiptItems qr initialItems) = SelectingReceiptItems qr items <# do
   let itemsButtons = (:[]) . toSelectReceiptItemButton . snd <$> items
   let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
-  let cancelButton  = actionButton "Cancel"  Id
+  let cancelButton  = actionButton "Cancel"  CancelSelecingReceiptItems
   let bottomButtonRow = [confirmButton, cancelButton]
   let buttons = itemsButtons ++ [bottomButtonRow]
   let selectedIndices = (^. _2 % #index) <$> filter fst items

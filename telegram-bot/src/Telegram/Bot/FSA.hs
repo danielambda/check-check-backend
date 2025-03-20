@@ -28,6 +28,7 @@ data Transition
   | ShowReceipt' Text [ReceiptItem]
   | CancelViewingReceipt
   | SelectReceiptItem Int
+  | CancelSelecingReceiptItems
   | StartSelectingRequestRecipient
   | SelectRequestRecipient UUID
   | CancelSelectingRequestRecipient
