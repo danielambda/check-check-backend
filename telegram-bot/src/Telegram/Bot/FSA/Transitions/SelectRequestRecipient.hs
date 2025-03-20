@@ -1,10 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Telegram.Bot.FSA.Transitions.SelectRequestRecipient (handleTransition) where
 
 import Telegram.Bot.Simple (replyText)
-import Data.UUID (toString, UUID)
-import qualified Data.Text as T
+import Data.UUID (UUID)
 
 import Data.List.NonEmpty (singleton)
 
@@ -19,9 +19,9 @@ handleTransition recipientId (SelectingRequestRecipient qr indices) = InitialSta
   token <- authViaTelegram =<< currentUser
   let reqBody = SendReceiptItemsRequestReqBody
         { receiptQr = qr
-        , indexSelections = singleton $ IndexSelectionReqBody{..}
+        , indexSelections = singleton IndexSelectionReqBody{..}
         }
   runReq_ $ sendRequest token reqBody
-  tg $ replyText $ T.pack $ toString recipientId
+  tg $ replyText "Request successfully sent"
 handleTransition _ _ = error "TODO"
 

@@ -4,8 +4,9 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 
-module SmartPrimitives.TextMaxLen (TextMaxLen, mkTextMaxLen, unTextMaxLen) where
+module SmartPrimitives.TextMaxLen (TextMaxLen(TextMaxLen), mkTextMaxLen, unTextMaxLen) where
 
 import Servant (FromHttpApiData, parseUrlPiece)
 import Database.PostgreSQL.Simple.FromField (FromField (fromField))
@@ -20,12 +21,16 @@ import Data.String (IsString (fromString))
 import SmartPrimitives.Internal (mkParseJSON, mkParseUrlPiece, mkFromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
 
-newtype TextMaxLen (n :: Nat) = TextMaxLen Text
+newtype TextMaxLen (n :: Nat) = MkTextMaxLen Text
   deriving (ToField, ToJSON)
+
+{-# COMPLETE TextMaxLen #-}
+pattern TextMaxLen :: Text -> TextMaxLen n
+pattern TextMaxLen txt <- MkTextMaxLen txt
 
 mkTextMaxLen :: forall n. (KnownNat n) => Text -> Maybe (TextMaxLen n)
 mkTextMaxLen text
-  | T.length text <= maxLen = Just (TextMaxLen text)
+  | T.length text <= maxLen = Just (MkTextMaxLen text)
   | otherwise = Nothing
   where
     maxLen = fromInteger $ natVal (Proxy @n)

@@ -4,11 +4,11 @@
 
 module Telegram.Bot.FSA.Transitions.ShowReceipt (handleTransition) where
 
-import Telegram.Bot.Simple (ReplyMessage (replyMessageReplyMarkup), reply, actionButton)
-
+import Telegram.Bot.Simple (ReplyMessage (..), reply, actionButton)
 import Telegram.Bot.API (InlineKeyboardMarkup(..), SomeReplyMarkup (..))
-import Data.Functor ((<&>))
 import Data.Text (Text)
+
+import Data.Functor ((<&>))
 import qualified Data.Text as T
 
 import SmartPrimitives.Positive (Positive(..))
@@ -19,42 +19,44 @@ import Models (ReceiptItem(..))
 import Telegram.Bot.AppM ((<#), Eff', tg)
 import Telegram.Bot.FSA
   ( State(InitialState)
-  , Transition (StartSelectingRequestRecipient, SelectReceiptItem, StartSelectingReceiptItems)
+  , Transition (SelectReceiptItem, StartSelectingReceiptItems, Id)
   )
 
 handleTransition :: Text -> State -> Eff' Transition State
 handleTransition qr InitialState = InitialState <# do
   ReceiptResp items <- runReq $ getReceipt qr
   let items' = process items
-  let confirmButton = actionButton "Confirm" StartSelectingRequestRecipient
   let itemsButtons = items'
         <&> (:[])
          .  \(index, item) -> actionButton item (SelectReceiptItem index)
-  let buttons = itemsButtons ++ [[confirmButton]]
+  let okButton = actionButton "Ok" Id
+  let buttons = itemsButtons ++ [[okButton]]
   let msg' = "Scanned receipt items: "
-        { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $ InlineKeyboardMarkup
-          { inlineKeyboardMarkupInlineKeyboard = buttons }
+        { replyMessageReplyMarkup = Just $ SomeInlineKeyboardMarkup $
+          InlineKeyboardMarkup buttons
         }
   tg $ reply msg'
   return $ StartSelectingReceiptItems qr $ items
     <&> \ReceiptItemResp{ price = Positive price, quantity = Positive quantity, .. } ->
       ReceiptItem{..}
+  where
+  process :: [ReceiptItemResp] -> [(Int, Text)]
+  process = map $
+    \ReceiptItemResp{ index, name, quantity = Positive quantity, price = Positive price } ->
+      ( index
+      , T.pack (show index)
+        <> ". "
+        <> T.take 20 name
+        <> "... x "
+        <> T.pack (show quantity)
+        <> " = "
+        <> T.pack (show (round (fromIntegral price * quantity) `divide` 100))
+        <> " rub"
+      )
+    where
+    divide :: Int -> Double -> Double
+    divide a b = fromIntegral a / b
 handleTransition _ _ = error "TODO"
 
-process :: [ReceiptItemResp] -> [(Int, Text)]
-process = fmap $
-  \ReceiptItemResp{ index, name, quantity = Positive quantity, price = Positive price } ->
-    ( index
-    , T.pack (show index)
-      <> ". "
-      <> T.take 20 name
-      <> "... x "
-      <> T.pack (show quantity)
-      <> " = "
-      <> T.pack (show (round (fromIntegral price * quantity) `divide` 100))
-      <> " rub"
-    )
 
-divide :: Int -> Double -> Double
-divide a b = fromIntegral a / b
 
