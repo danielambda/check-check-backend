@@ -67,6 +67,7 @@ decideTransition (BotName botName) state = parseUpdate parser
 
       SelectingReceiptItems{} -> callbackQueryDataWhich isAllowed where
         isAllowed SelectReceiptItem{} = True
+        isAllowed CancelSelecingReceiptItems{} = True
         isAllowed StartSelectingRequestRecipient{} = True
         isAllowed _ = False
 

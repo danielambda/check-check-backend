@@ -17,7 +17,7 @@ data State
   = InitialState
   | ViewingReceipt Text [ReceiptItem]
   | SelectingReceiptItems Text [(Bool, ReceiptItem)]
-  | SelectingRequestRecipient Text (NonEmpty Int)
+  | SelectingRequestRecipient Text (NonEmpty ReceiptItem)
   deriving Show
 
 data Transition
