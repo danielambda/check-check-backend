@@ -27,7 +27,6 @@ executable:
   - resource-pool
   - time
   - jose
-  - optics
 
   ghc-options:
   - -threaded
