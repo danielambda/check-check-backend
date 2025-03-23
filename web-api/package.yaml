@@ -5,10 +5,11 @@ executable:
   source-dirs: src
 
   dependencies:
-  - contracts
+  - check-check-backend-contracts
+  - smart-primitives
+
   - core
   - infrastructure
-  - smart-primitives
 
   - base
   - servant-server

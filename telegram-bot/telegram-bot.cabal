@@ -37,8 +37,8 @@ executable telegram-bot
       aeson
     , base
     , bytestring
+    , check-check-backend-contracts
     , containers
-    , contracts
     , http-client
     , jose
     , mtl

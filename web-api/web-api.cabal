@@ -53,7 +53,7 @@ executable web-api
     , base
     , base64-bytestring
     , bytestring
-    , contracts
+    , check-check-backend-contracts
     , core
     , hedis
     , http-conduit
