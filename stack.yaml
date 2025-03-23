@@ -9,7 +9,6 @@ snapshot: lts-23.14
 
 packages:
 - web-api
-- telegram-bot
 - infrastructure
 - core
 
