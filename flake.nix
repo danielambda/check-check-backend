@@ -27,7 +27,7 @@
         ];
 
         smart-primitives = hPkgs.callCabal2nix "smart-primitives" ./smart-primitives {};
-        contracts = hPkgs.callCabal2nix "contracts" ./contracts {
+        check-check-backend-contracts = hPkgs.callCabal2nix "contracts" ./contracts {
           inherit smart-primitives;
         };
         core = hPkgs.callCabal2nix "core" ./core {
@@ -37,10 +37,10 @@
           inherit smart-primitives core;
         };
         web-api = hPkgs.callCabal2nix "web-api" ./web-api {
-          inherit smart-primitives core contracts infrastructure;
+          inherit smart-primitives core check-check-backend-contracts infrastructure;
         };
         telegram-bot = hPkgs.callCabal2nix "telegram-bot" ./telegram-bot {
-          inherit smart-primitives contracts;
+          inherit smart-primitives check-check-backend-contracts;
         };
 
         web-api-image = pkgs.dockerTools.buildLayeredImage {

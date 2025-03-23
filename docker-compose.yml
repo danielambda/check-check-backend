@@ -8,8 +8,6 @@ services:
     environment:
       BACKEND_BASE_URL:
       AUTH_BASE_URL:
-      TELEGRAM_BOT_TOKEN:
-      AUTH_API_KEY:
     depends_on:
       db:
         condition: service_healthy
