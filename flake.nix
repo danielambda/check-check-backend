@@ -26,8 +26,22 @@
           pkgs.zlib
         ];
 
-        smart-primitives = hPkgs.callCabal2nix "smart-primitives" ./smart-primitives {};
-        check-check-backend-contracts = hPkgs.callCabal2nix "contracts" ./contracts {
+        smart-primitives-src = pkgs.fetchFromGitHub {
+          owner = "danielambda";
+          repo = "smart-primitives";
+          rev = "03193ff51a339bccaa3250f40b9d2fa032782824";
+          sha256 = "1kg4y228qqj5685sygnydfpd3mkrrm97l50rzkp7bwg0w0gda2lv";
+        };
+
+        check-check-backend-contracts-src = pkgs.fetchFromGitHub {
+          owner = "danielambda";
+          repo = "check-check-backend-contracts";
+          rev = "d00cdc3b2d85621a5afae21c81b6dbcb5bec32e5";
+          sha256 = "1kgjxknwgkx8ymfffbz6sjj0r5iajg089f68dfs1dz6hbsvmshj9";
+        };
+
+        smart-primitives = hPkgs.callCabal2nix "smart-primitives" smart-primitives-src {};
+        check-check-backend-contracts = hPkgs.callCabal2nix "check-check-backend-contracts" check-check-backend-contracts-src {
           inherit smart-primitives;
         };
         core = hPkgs.callCabal2nix "core" ./core {
@@ -38,9 +52,6 @@
         };
         web-api = hPkgs.callCabal2nix "web-api" ./web-api {
           inherit smart-primitives core check-check-backend-contracts infrastructure;
-        };
-        telegram-bot = hPkgs.callCabal2nix "telegram-bot" ./telegram-bot {
-          inherit smart-primitives check-check-backend-contracts;
         };
 
         web-api-image = pkgs.dockerTools.buildLayeredImage {
@@ -61,15 +72,6 @@
 
           config.Entrypoint = ["${infrastructure}/bin/init-db"];
         };
-
-        telegram-bot-image = pkgs.dockerTools.buildLayeredImage {
-          name = "check-check-telegram-bot";
-          tag = "latest";
-
-          contents = [telegram-bot pkgs.cacert];
-
-          config.Entrypoint = ["${telegram-bot}/bin/telegram-bot"];
-        };
       in {
         devShell = pkgs.mkShell {
           inherit packages;
@@ -79,7 +81,6 @@
 
         packages.web-api-image = web-api-image;
         packages.init-db-image = init-db-image;
-        packages.telegram-bot-image = telegram-bot-image;
       }
     );
 }
