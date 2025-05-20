@@ -1,10 +1,9 @@
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 module Infrastructure (InfrastructureT(..)) where
 
 import Control.Monad.IO.Class (MonadIO)
+import Data.Kind (Type)
 
 import Core.Receipts.MonadClasses.Fetching (ReceiptsFetching)
 import Core.Receipts.MonadClasses.Repository (ReceiptsRepository)
@@ -16,6 +15,7 @@ import Infrastructure.Users.PGRepository (UsersRepositoryT(..))
 import Infrastructure.Users.Requests.PGRepository (RequestsRepositoryT(..))
 import Infrastructure.Common.Persistence (MonadPG)
 
+type InfrastructureT :: (Type -> Type) -> Type -> Type
 newtype InfrastructureT m a = InfrastructureT
   { runInfrastructureT :: m a }
   deriving newtype (Functor, Applicative, Monad, MonadIO, MonadPG)

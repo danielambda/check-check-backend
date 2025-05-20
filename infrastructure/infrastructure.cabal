@@ -1,9 +1,4 @@
-cabal-version: 1.12
-
--- This file has been generated from package.yaml by hpack version 0.37.0.
---
--- see: https://github.com/sol/hpack
-
+cabal-version:  3.0
 name:           infrastructure
 version:        0.1.0.0
 build-type:     Simple
@@ -36,7 +31,7 @@ library
     , time
     , unordered-containers
     , uuid
-  default-language: Haskell2010
+  default-language: GHC2021
 
 executable init-db
   main-is: InitDb.hs
@@ -52,4 +47,4 @@ executable init-db
     , mtl
     , postgresql-simple
     , text
-  default-language: Haskell2010
+  default-language: GHC2021

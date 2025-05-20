@@ -1,86 +1,61 @@
 {
-  description = "Check-Check backend flake";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    systems.url = "github:nix-systems/default";
-    flake-utils = {
-      url = "github:numtide/flake-utils";
-      inputs.systems.follows = "systems";
-    };
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    haskell-flake.url = "github:srid/haskell-flake";
+
+    smart-primitives.url              = "github:danielambda/smart-primitives";
+    check-check-backend-contracts.url = "github:danielambda/check-check-backend-contracts";
   };
 
-  outputs = { nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        hPkgs = pkgs.haskell.packages.ghc984;
+  outputs = inputs@{ nixpkgs, flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = nixpkgs.lib.systems.flakeExposed;
+      imports = [inputs.haskell-flake.flakeModule];
+      perSystem = { self', config, pkgs, ... }:
+        let
+          web-api = self'.packages.web-api;
+          infrastructure = self'.packages.infrastructure;
+          web-api-image = pkgs.dockerTools.buildLayeredImage {
+            name = "check-check-backend";
+            tag = "latest";
+            contents = [web-api pkgs.cacert];
+            config = {
+              Expose = [8080];
+              Entrypoint = ["${web-api}/bin/web-api"];
+            };
+          };
 
-        packages = [
-          pkgs.nixd
-
-          hPkgs.ghc
-          hPkgs.ghcid
-          hPkgs.haskell-language-server
-          pkgs.stack
-
-          pkgs.zlib
-        ];
-
-        smart-primitives-src = pkgs.fetchFromGitHub {
-          owner = "danielambda";
-          repo = "smart-primitives";
-          rev = "03193ff51a339bccaa3250f40b9d2fa032782824";
-          sha256 = "1kg4y228qqj5685sygnydfpd3mkrrm97l50rzkp7bwg0w0gda2lv";
+          init-db-image = pkgs.dockerTools.buildLayeredImage {
+            name = "check-check-backend-init-db";
+            tag = "latest";
+            contents = [infrastructure];
+            config.Entrypoint = ["${infrastructure}/bin/init-db"];
+          };
+        in {
+        haskellProjects.default = {
+          autoWire = ["packages" "apps"];
+          packages = {
+            smart-primitives.source = inputs.smart-primitives;
+            check-check-backend-contracts.source = inputs.check-check-backend-contracts;
+          };
         };
 
-        check-check-backend-contracts-src = pkgs.fetchFromGitHub {
-          owner = "danielambda";
-          repo = "check-check-backend-contracts";
-          rev = "d00cdc3b2d85621a5afae21c81b6dbcb5bec32e5";
-          sha256 = "1kgjxknwgkx8ymfffbz6sjj0r5iajg089f68dfs1dz6hbsvmshj9";
+        devShells.default = pkgs.mkShell {
+          inputsFrom = [config.haskellProjects.default.outputs.devShell];
+          packages = [pkgs.nixd];
+
+          shellHook = ''
+            set -a
+            source ./.env
+            set +a
+          '';
         };
 
-        smart-primitives = hPkgs.callCabal2nix "smart-primitives" smart-primitives-src {};
-        check-check-backend-contracts = hPkgs.callCabal2nix "check-check-backend-contracts" check-check-backend-contracts-src {
-          inherit smart-primitives;
+        packages = {
+          default = web-api;
+          inherit web-api-image init-db-image;
         };
-        core = hPkgs.callCabal2nix "core" ./core {
-          inherit smart-primitives;
-        };
-        infrastructure = hPkgs.callCabal2nix "infrastructure" ./infrastructure {
-          inherit smart-primitives core;
-        };
-        web-api = hPkgs.callCabal2nix "web-api" ./web-api {
-          inherit smart-primitives core check-check-backend-contracts infrastructure;
-        };
-
-        web-api-image = pkgs.dockerTools.buildLayeredImage {
-          name = "check-check-backend";
-          tag = "latest";
-
-          contents = [web-api pkgs.cacert];
-
-          config.Expose = [8080];
-          config.Entrypoint = ["${web-api}/bin/web-api"];
-        };
-
-        init-db-image = pkgs.dockerTools.buildLayeredImage {
-          name = "check-check-backend-init-db";
-          tag = "latest";
-
-          contents = [infrastructure];
-
-          config.Entrypoint = ["${infrastructure}/bin/init-db"];
-        };
-      in {
-        devShell = pkgs.mkShell {
-          inherit packages;
-
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;
-        };
-
-        packages.web-api-image = web-api-image;
-        packages.init-db-image = init-db-image;
-      }
-    );
+      };
+    };
 }
