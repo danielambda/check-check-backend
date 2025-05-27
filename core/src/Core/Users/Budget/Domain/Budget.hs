@@ -1,19 +1,20 @@
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Core.Users.Budget.Domain.Budget
   ( Budget(..), BudgetLowerBoundStatus(..)
   , RoundingData'(..), RoundingData, RoundingStrategy(..)
   , applyDelta
   , spend, spendRounded
+  , receive, receiveRounded
   ) where
 
 import Optics
@@ -79,6 +80,17 @@ spendRounded :: RoundingData -> Positive RubKopecks -> Budget -> Budget
 spendRounded roundingData
   = applyDelta
   . negate
+  . roundWith roundingData
+  . unPositive
+
+receive :: Positive RubKopecks -> Budget -> Budget
+receive
+  = applyDelta
+  . unPositive
+
+receiveRounded :: RoundingData -> Positive RubKopecks -> Budget -> Budget
+receiveRounded roundingData
+  = applyDelta
   . roundWith roundingData
   . unPositive
 

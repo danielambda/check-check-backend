@@ -58,6 +58,7 @@ import Control.Exception (try)
 import Data.ByteString.Char8 (isInfixOf)
 import qualified Data.Text as T (pack)
 import Control.Monad.Reader (ReaderT(runReaderT))
+import Database.PostgreSQL.Simple.Types (PGArray(..))
 
 newtype UsersRepositoryT m a = UsersRepositoryT
   { runUsersRepositoryT :: m a }
@@ -151,18 +152,34 @@ updateSomeUserInDb (SomeUser user) = do
   let (dbUser, mDbBudget, otherUserIdRelations) = toDb user
   let userId = user ^^. #userId
   withTransaction $ do
-    void $ execute [sql| DELETE FROM budgets WHERE userId = ? |] (Only userId)
-    void $ execute [sql| DELETE FROM otherUserIds WHERE userGroupId = ? |] (Only userId)
-    void $ execute [sql| DELETE FROM users WHERE userId = ? |] (Only userId)
     void $ execute [sql|
-      INSERT INTO users (userId, username, ownerId, isGroup) VALUES (?, ?, ?, ?)
-    |] dbUser
+      UPDATE users
+      SET username = ?, ownerId = ?, isGroup = ?
+      WHERE userId = ?
+    |] (let DbUser{userId=_, ..} = dbUser in (username, ownerId, isGroup, userId))  -- Replace first param with userId for WHERE clause
+
+    case mDbBudget of
+      Nothing ->
+        void $ execute [sql| DELETE FROM budgets WHERE userId = ? |] (Only userId)
+      Just budget ->
+        void $ execute [sql|
+          INSERT INTO budgets (userId, amount, lowerBound)
+          VALUES (?, ?, ?)
+          ON CONFLICT (userId)
+          DO UPDATE SET amount = EXCLUDED.amount, lowerBound = EXCLUDED.lowerBound
+        |] budget
+
+    void $ execute [sql|
+      DELETE FROM otherUserIds
+      WHERE userGroupId = ?
+      AND userSingleId NOT IN (SELECT unnest(?::uuid[]))
+    |] (userId, PGArray $ map userSingleId otherUserIdRelations)
+
     void $ executeMany [sql|
-      INSERT INTO otherUserIds (userGroupId, userSingleId) VALUES (?, ?)
+      INSERT INTO otherUserIds (userGroupId, userSingleId)
+      VALUES (?, ?)
+      ON CONFLICT (userGroupId, userSingleId) DO NOTHING
     |] otherUserIdRelations
-    forM_ mDbBudget $ execute [sql|
-      INSERT INTO budgets (userId, amount, lowerBound) VALUES (?, ?, ?)
-    |]
 
 getGroupsOwnedByFromDb :: MonadPG m => UserId 'Single -> m [User 'Group]
 getGroupsOwnedByFromDb (UserId ownerId) =

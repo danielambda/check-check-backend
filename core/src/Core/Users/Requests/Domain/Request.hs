@@ -15,7 +15,9 @@ module Core.Users.Requests.Domain.Request
   ( Request(..)
   , RequestItem(..), RequestItemIdentity(..)
   , SomeRequest(..)
-  , newRequest, markCompleted, payFor
+  , newRequest
+  , markCompleted
+  , payFor, receiveMoneyFor
   ) where
 
 import Optics
@@ -35,7 +37,7 @@ import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime(currentTime))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID)
 import Core.Common.Domain.RubKopecks (RubKopecks)
 import Core.Users.Domain.UserId (SomeUserId)
-import Core.Users.Budget.Domain.Budget (Budget, spend, spendRounded, RoundingData)
+import Core.Users.Budget.Domain.Budget (Budget, spend, spendRounded, RoundingData, receiveRounded, receive)
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus (..))
 import Core.Users.Requests.Domain.RequestId (RequestId, newRequestId)
 
@@ -90,6 +92,12 @@ payFor mRoundingData request budget = let
   budget' = budget & pay (request ^. #priceSum)
   completedRequest = markCompleted request
   in (completedRequest, budget')
+
+receiveMoneyFor :: Maybe RoundingData -> Request 'Pending -> Budget -> Budget
+receiveMoneyFor mRoundingData request budget = let
+  receive' = maybe receive receiveRounded mRoundingData
+  budget' = budget & receive' (request ^. #priceSum)
+  in budget'
 
 data SomeRequest where
   SomeRequest :: Typeable status => Request status -> SomeRequest

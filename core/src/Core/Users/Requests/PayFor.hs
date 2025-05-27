@@ -1,11 +1,12 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE OverloadedLabels #-}
 
 module Core.Users.Requests.PayFor
   ( Data(..)
@@ -14,18 +15,20 @@ module Core.Users.Requests.PayFor
   , Error(..)
   ) where
 
-import Optics ((%), (^?))
+import Optics ((%), (^?), (.~), (&), (%~))
 
+import Control.Monad (forM_)
 import Data.Typeable (eqT, (:~:)(..))
 
 import Core.Users.Domain.UserId (SomeUserId)
-import Core.Users.MonadClasses.Repository (UsersRepository (getSomeUserFromRepo))
-import Core.Users.Budget.Domain.Budget (RoundingData, Budget)
+import Core.Users.MonadClasses.Repository
+  (UsersRepository (getSomeUserFromRepo, updateSomeUserInRepo))
 import Core.Users.Requests.MonadClasses.Repository
   (RequestsRepository (getRequestFromRepo, markRequestCompletedInRepo))
+import Core.Users.Budget.Domain.Budget (RoundingData, Budget)
 import Core.Users.Requests.Domain.RequestStatus (RequestStatus(..))
 import Core.Users.Requests.Domain.RequestId (RequestId, SomeRequestId (SomeRequestId))
-import Core.Users.Requests.Domain.Request (SomeRequest(SomeRequest), Request, payFor)
+import Core.Users.Requests.Domain.Request (SomeRequest(SomeRequest), Request (..), payFor, receiveMoneyFor)
 
 data Data = Data
   { recipientId :: SomeUserId
@@ -51,7 +54,12 @@ payForRequest Data{ recipientId, requestId, mRoundingData } =
         Just Refl -> case recipient ^? #data % #mBudget of
           Nothing -> return $ Left $ UserDoesNotHaveBudget recipientId
           Just budget -> do
-            let (paidRequest, budget') = payFor mRoundingData request budget
+            let (paidRequest@Request{senderId}, budget') = payFor mRoundingData request budget
             markRequestCompletedInRepo paidRequest
+            mSender <- getSomeUserFromRepo senderId
+            forM_ mSender $ \sender ->
+              updateSomeUserInRepo $
+                sender & #data % #mBudget %~ receiveMoneyFor mRoundingData request
+            updateSomeUserInRepo $ recipient & #data % #mBudget .~ budget
             return $ Right budget'
 
