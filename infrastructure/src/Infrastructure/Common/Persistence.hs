@@ -38,7 +38,6 @@ queryMaybe queryText q = listToMaybe <$> query queryText q
 querySingleField :: (MonadPG m, ToRow q, FromField f) => Query -> q -> m f
 querySingleField = (fmap (fromOnly . head) .) . query
 
-
 query_ :: (MonadPG m, FromRow r) => Query -> m [r]
 query_ = liftToMonadConstraints_ PG.query_
 

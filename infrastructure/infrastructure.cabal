@@ -7,10 +7,6 @@ library
   exposed-modules:
       Infrastructure
       Infrastructure.Common.Persistence
-      Infrastructure.Receipts.Fetching
-      Infrastructure.Receipts.PGRepository
-      Infrastructure.Users.PGRepository
-      Infrastructure.Users.Requests.PGRepository
   other-modules:
       Infrastructure.Common.Persistence.Internal.ByteStringParsableEnum
       Paths_infrastructure

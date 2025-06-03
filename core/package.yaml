@@ -37,7 +37,6 @@ library:
 
     - Core.Users.Requests.Domain.Request
     - Core.Users.Requests.Domain.RequestId
-    - Core.Users.Requests.Domain.RequestStatus
     - Core.Users.Requests.MonadClasses.Repository
     - Core.Users.Requests.SendList
     - Core.Users.Requests.SendReceiptItems

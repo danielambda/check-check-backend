@@ -8,37 +8,6 @@ executable web-api
   other-modules:
       WebAPI
       WebAPI.AppM
-      WebAPI.Auth
-      WebAPI.Groups
-      WebAPI.Groups.Budget
-      WebAPI.Groups.Budget.ApplyDelta
-      WebAPI.Groups.Budget.Create
-      WebAPI.Groups.Create
-      WebAPI.Groups.Get
-      WebAPI.Groups.GetAll
-      WebAPI.Groups.IncomingRequests
-      WebAPI.Groups.IncomingRequests.Complete
-      WebAPI.Groups.IncomingRequests.GetAll
-      WebAPI.Groups.OutgoingRequests
-      WebAPI.Groups.OutgoingRequests.Send
-      WebAPI.Receipts
-      WebAPI.Receipts.Get
-      WebAPI.Users
-      WebAPI.Users.Budget
-      WebAPI.Users.Budget.ApplyDelta
-      WebAPI.Users.Budget.Create
-      WebAPI.Users.Budget.Get
-      WebAPI.Users.Contacts
-      WebAPI.Users.Contacts.Create
-      WebAPI.Users.Contacts.Delete
-      WebAPI.Users.Contacts.GetAll
-      WebAPI.Users.Create
-      WebAPI.Users.Get
-      WebAPI.Users.IncomingRequests
-      WebAPI.Users.IncomingRequests.Complete
-      WebAPI.Users.IncomingRequests.GetAll
-      WebAPI.Users.OutgoingRequests
-      WebAPI.Users.OutgoingRequests.Send
       Paths_web_api
   hs-source-dirs:
       src
@@ -50,12 +19,10 @@ executable web-api
     , bytestring
     , check-check-backend-contracts
     , core
-    , hedis
+    , containers
     , http-conduit
     , infrastructure
-    , jose
     , mtl
-    , optics
     , postgresql-simple
     , resource-pool
     , servant-auth
@@ -66,6 +33,5 @@ executable web-api
     , time
     , uuid
     , wai
-    , wai-cors
     , warp
   default-language: GHC2021

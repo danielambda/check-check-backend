@@ -1,9 +1,0 @@
-### Create group
-POST localhost:8080/groups/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXQiOnsidXNlcklkIjoiMGM0ZjdiZDAtNWQ1Zi00NmY1LTgzNWQtMjU3YjBhNmQwMjM3IiwidXNlcm5hbWUiOiJkYW5pZWxhbWJkYSJ9LCJuYmYiOjE3NDEzODA0NDYsImV4cCI6MTc0MTM4NDA0NiwiaWF0IjoxNzQxMzgwNDQ2fQ.d04BTLggAWdOVX-egLrvTfWHw8kvxozKJ20wUe6X1dw
-Content-Type: application/json
-
-{
-  "name": "801"
-}
-

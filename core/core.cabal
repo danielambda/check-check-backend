@@ -9,38 +9,6 @@ library
       Core.Common.MonadClasses.MonadUUID
       Core.Common.MonadClasses.MonadUTCTime
       Core.Common.Operators
-      Core.Receipts.Get
-      Core.Receipts.Domain.Receipt
-      Core.Receipts.Domain.ReceiptItem
-      Core.Receipts.MonadClasses.Fetching
-      Core.Receipts.MonadClasses.Repository
-      Core.Users.Domain.User
-      Core.Users.Domain.UserId
-      Core.Users.Domain.UserType
-      Core.Users.Domain.UserContact
-      Core.Users.Domain.Primitives
-      Core.Users.MonadClasses.Repository
-      Core.Users.CreateSingle
-      Core.Users.CreateExistingSingle
-      Core.Users.CreateGroup
-      Core.Users.GetSingle
-      Core.Users.GetGroup
-      Core.Users.GetAllGroups
-      Core.Users.Contacts.GetAll
-      Core.Users.Contacts.Create
-      Core.Users.Contacts.Delete
-      Core.Users.Budget.Domain.Budget
-      Core.Users.Budget.Create
-      Core.Users.Budget.ApplyDelta
-      Core.Users.Requests.Domain.Request
-      Core.Users.Requests.Domain.RequestId
-      Core.Users.Requests.Domain.RequestStatus
-      Core.Users.Requests.MonadClasses.Repository
-      Core.Users.Requests.SendList
-      Core.Users.Requests.SendReceiptItems
-      Core.Users.Requests.GetIncoming
-      Core.Users.Requests.MarkCompleted
-      Core.Users.Requests.PayFor
   other-modules:
       Paths_core
   hs-source-dirs:

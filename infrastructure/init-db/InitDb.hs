@@ -7,9 +7,6 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import System.Environment (getEnv)
 
 import Infrastructure.Common.Persistence (MonadPG, withTransaction)
-import Infrastructure.Receipts.PGRepository (createReceiptItemsTable)
-import Infrastructure.Users.PGRepository (createUsersTable, createBudgetsTable, createOtherUserIdsTable, createUserContactsTable)
-import Infrastructure.Users.Requests.PGRepository (createRequestsTable, createRequestItemsTable)
 
 main :: IO ()
 main = getEnv "POSTGRESQL_CONNECTION_STRING"
@@ -18,10 +15,4 @@ main = getEnv "POSTGRESQL_CONNECTION_STRING"
 
 initDb :: MonadPG m => m ()
 initDb = withTransaction $ do
-  createReceiptItemsTable
-  createUsersTable
-  createBudgetsTable
-  createOtherUserIdsTable
-  createUserContactsTable
-  createRequestsTable
-  createRequestItemsTable
+  pure ()
