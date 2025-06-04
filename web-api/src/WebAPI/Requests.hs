@@ -1,63 +1,30 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module WebAPI.Requests (RequestsAPI, requestsServer) where
+module WebAPI.Requests (requestsServer) where
 
 import Control.Monad.Reader (asks, MonadIO (liftIO))
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import Database.PostgreSQL.Simple (Only(..))
 import Database.PostgreSQL.Simple.SqlQQ (sql)
-import Servant ((:<|>)((:<|>)), (:>), Capture, JSON, ReqBody, Get, Post, ServerT)
+import Servant ((:<|>)((:<|>)), ServerT)
 
 import Control.Concurrent (readMVar, modifyMVar_)
 import Control.Monad (void, forM)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Maybe (fromMaybe)
-import GHC.Generics (Generic)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Map as Map
 
+import CheckCheck.Contracts.Requests (RequestResp(..), RequestItemResp(..), RequestItemReqBody(..), RequestsAPI, PostRequestReqBody (..))
+import CheckCheck.Contracts.Budget (BudgetResp)
 import Core.Common.MonadClasses.MonadUTCTime (MonadUTCTime(currentTime))
 import Core.Common.MonadClasses.MonadUUID (MonadUUID(newUUID))
 import Infrastructure.Common.Persistence (MonadPG, executeMany, execute, withTransaction, query_, queryMaybe, query)
 import WebAPI.AppM (AppM, Env (budgetAmountMVar))
-import WebAPI.Budget (BudgetResp, Budget (Budget), budgetToResp)
-
-type RequestsAPI
-  =    PostRequest
-  :<|> GetRequests
-  :<|> Capture "requestId" UUID :> "complete" :> Post '[JSON] BudgetResp
-
-type PostRequest = ReqBody '[JSON] PostRequestReqBody :> Post '[JSON] RequestResp
-type GetRequests = Get '[JSON] [RequestResp]
-
-data RequestItemReqBody = RequestItemReqBody
-  { name :: Text
-  , price :: Integer
-  } deriving (Generic, FromJSON)
-
-newtype PostRequestReqBody = PostRequestReqBody (NonEmpty RequestItemReqBody)
-  deriving stock Generic
-  deriving anyclass FromJSON
-
-data RequestResp = RequestResp
-  { requestId :: UUID
-  , items :: NonEmpty RequestItemResp
-  , createdAt :: UTCTime
-  , isPending :: Bool
-  } deriving (Generic, ToJSON)
-
-data RequestItemResp = RequestItemResp
-  { name :: Text
-  , price :: Integer
-  } deriving (Generic, ToJSON)
+import WebAPI.Budget (Budget (Budget), budgetToResp)
 
 requestToResp :: Request -> RequestResp
 requestToResp Request{items=items',..} = RequestResp{..}

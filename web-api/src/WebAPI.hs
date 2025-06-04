@@ -2,18 +2,14 @@
 
 module WebAPI (mkApp) where
 
-import Servant
-  (Application, Proxy(Proxy), Handler, ServerT, (:>), (:<|>)((:<|>)), serve, hoistServer)
+import Servant (Application, Proxy(Proxy), Handler, ServerT, (:<|>)((:<|>)), serve, hoistServer)
 
 import Control.Monad.Reader (runReaderT)
 
+import CheckCheck.Contracts.API (API)
 import WebAPI.AppM (AppM(runAppM), Env)
-import WebAPI.Budget (BudgetAPI, budgetServer)
-import WebAPI.Requests (RequestsAPI, requestsServer)
-
-type API
-  =    "requests" :> RequestsAPI
-  :<|> "budget" :> BudgetAPI
+import WebAPI.Budget (budgetServer)
+import WebAPI.Requests (requestsServer)
 
 server :: ServerT API AppM
 server

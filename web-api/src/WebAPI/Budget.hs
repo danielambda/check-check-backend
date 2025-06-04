@@ -1,29 +1,14 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
-module WebAPI.Budget (BudgetAPI, BudgetResp, Budget(..), budgetToResp, budgetServer) where
+module WebAPI.Budget (Budget(..), budgetToResp, budgetServer) where
 
-import Data.Aeson (ToJSON)
-import Servant ((:<|>)((:<|>)), (:>), JSON, ReqBody, Get, Patch, ServerT)
+import Servant ((:<|>)((:<|>)), ServerT)
 
 import Control.Concurrent (readMVar, modifyMVar_)
 import Control.Monad.Reader (asks, MonadIO (liftIO))
-import GHC.Generics (Generic)
 
 import WebAPI.AppM (AppM, Env (budgetAmountMVar))
-
-type BudgetAPI = GetBudget :<|> ApplyBudgetDelta
-
-type GetBudget = Get '[JSON] BudgetResp
-type ApplyBudgetDelta = ReqBody '[JSON] Integer :> Patch '[JSON] BudgetResp
-
-newtype BudgetResp = BudgetResp
-  { amount :: Integer }
-  deriving stock Generic
-  deriving anyclass ToJSON
+import CheckCheck.Contracts.Budget (BudgetAPI, BudgetResp (..))
 
 newtype Budget = Budget
   { amount :: Integer }

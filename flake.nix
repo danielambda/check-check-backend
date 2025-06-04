@@ -5,7 +5,7 @@
     haskell-flake.url = "github:srid/haskell-flake";
 
     smart-primitives.url              = "github:danielambda/smart-primitives";
-    check-check-backend-contracts.url = "github:danielambda/check-check-backend-contracts";
+    check-check-backend-contracts.url = "github:danielambda/check-check-backend-contracts/minimal-remaster";
   };
 
   outputs = inputs@{ nixpkgs, flake-parts, ... }:
