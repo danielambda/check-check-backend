@@ -8,6 +8,8 @@ executable web-api
   other-modules:
       WebAPI
       WebAPI.AppM
+      WebAPI.Budget
+      WebAPI.Requests
       Paths_web_api
   hs-source-dirs:
       src
